@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "8742DA87-C2B1-4640-BBFF-34DA2CA5D13A",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:cowpyfwend.xcodeproj",
+      "identifier" : "B6EBA19F2F5E4C3C007A9E27",
+      "name" : "cowpyfwend"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:cowpyfwend.xcodeproj",
+        "identifier" : "B6EBA1CA2F5E5402007A9E27",
+        "name" : "cowpyfwendTests"
+      }
+    }
+  ],
+  "version" : 1
+}

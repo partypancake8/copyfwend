@@ -6,14 +6,31 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		B6EBA1CF2F5E5402007A9E27 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B6EBA1982F5E4C3C007A9E27 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B6EBA19F2F5E4C3C007A9E27;
+			remoteInfo = cowpyfwend;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		B6EBA1A02F5E4C3C007A9E27 /* cowpyfwend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = cowpyfwend.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B6EBA1CB2F5E5402007A9E27 /* cowpyfwendTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = cowpyfwendTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B6EBA1D62F5E54E6007A9E27 /* cowpyfwend.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; name = cowpyfwend.xctestplan; path = cowpyfwendTests/cowpyfwend.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B6EBA1A22F5E4C3C007A9E27 /* cowpyfwend */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = cowpyfwend;
+			sourceTree = "<group>";
+		};
+		B6EBA1CC2F5E5402007A9E27 /* cowpyfwendTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = cowpyfwendTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,13 +43,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B6EBA1C82F5E5402007A9E27 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		B6EBA1972F5E4C3C007A9E27 = {
 			isa = PBXGroup;
 			children = (
+				B6EBA1D62F5E54E6007A9E27 /* cowpyfwend.xctestplan */,
 				B6EBA1A22F5E4C3C007A9E27 /* cowpyfwend */,
+				B6EBA1CC2F5E5402007A9E27 /* cowpyfwendTests */,
 				B6EBA1A12F5E4C3C007A9E27 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				B6EBA1A02F5E4C3C007A9E27 /* cowpyfwend.app */,
+				B6EBA1CB2F5E5402007A9E27 /* cowpyfwendTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +97,29 @@
 			productReference = B6EBA1A02F5E4C3C007A9E27 /* cowpyfwend.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B6EBA1CA2F5E5402007A9E27 /* cowpyfwendTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B6EBA1D12F5E5402007A9E27 /* Build configuration list for PBXNativeTarget "cowpyfwendTests" */;
+			buildPhases = (
+				B6EBA1C72F5E5402007A9E27 /* Sources */,
+				B6EBA1C82F5E5402007A9E27 /* Frameworks */,
+				B6EBA1C92F5E5402007A9E27 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B6EBA1D02F5E5402007A9E27 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B6EBA1CC2F5E5402007A9E27 /* cowpyfwendTests */,
+			);
+			name = cowpyfwendTests;
+			packageProductDependencies = (
+			);
+			productName = cowpyfwendTests;
+			productReference = B6EBA1CB2F5E5402007A9E27 /* cowpyfwendTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -83,6 +133,10 @@
 					B6EBA19F2F5E4C3C007A9E27 = {
 						CreatedOnToolsVersion = 26.0.1;
 						LastSwiftMigration = 2600;
+					};
+					B6EBA1CA2F5E5402007A9E27 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = B6EBA19F2F5E4C3C007A9E27;
 					};
 				};
 			};
@@ -101,12 +155,20 @@
 			projectRoot = "";
 			targets = (
 				B6EBA19F2F5E4C3C007A9E27 /* cowpyfwend */,
+				B6EBA1CA2F5E5402007A9E27 /* cowpyfwendTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B6EBA19E2F5E4C3C007A9E27 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B6EBA1C92F5E5402007A9E27 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -123,7 +185,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B6EBA1C72F5E5402007A9E27 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B6EBA1D02F5E5402007A9E27 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B6EBA19F2F5E4C3C007A9E27 /* cowpyfwend */;
+			targetProxy = B6EBA1CF2F5E5402007A9E27 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B6EBA1A92F5E4C3C007A9E27 /* Debug */ = {
@@ -257,8 +334,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -291,8 +368,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -308,6 +385,46 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B6EBA1D22F5E5402007A9E27 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.partypancake8.cowpyfwendTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/cowpyfwend.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/cowpyfwend";
+			};
+			name = Debug;
+		};
+		B6EBA1D32F5E5402007A9E27 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.partypancake8.cowpyfwendTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/cowpyfwend.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/cowpyfwend";
 			};
 			name = Release;
 		};
@@ -328,6 +445,15 @@
 			buildConfigurations = (
 				B6EBA1AC2F5E4C3C007A9E27 /* Debug */,
 				B6EBA1AD2F5E4C3C007A9E27 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B6EBA1D12F5E5402007A9E27 /* Build configuration list for PBXNativeTarget "cowpyfwendTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B6EBA1D22F5E5402007A9E27 /* Debug */,
+				B6EBA1D32F5E5402007A9E27 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
