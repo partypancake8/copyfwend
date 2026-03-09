@@ -25,7 +25,7 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 | Whitespace-only    | Recorded as-is                                     |
 | Pointer reset      | Resets to newest entry on every new copy           |
 | Wraparound         | Enabled at both ends                               |
-| Auto-paste         | Not in V1                                          |
+| Auto-paste         | Yes — Cmd+V simulated after each cycle             |
 | Persistence        | Not in V1                                          |
 | Launch at login    | Included via `SMAppService` (macOS 13+)            |
 | Accessibility      | Required; must be surfaced in menu if not granted  |
@@ -67,9 +67,12 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 
 ### Cycling Behavior
 
-- On hotkey: cycle ring → read `currentEntry()` → if non-nil, write to `NSPasteboard`
+- On hotkey: cycle ring → read `currentEntry()` → if non-nil, write to `NSPasteboard`, then schedule debounced paste
 - Write: `NSPasteboard.general.clearContents()` then `NSPasteboard.general.setString(_:forType:)`
-- If ring is empty: hotkey is swallowed but clipboard is unchanged
+- Debounce: paste fires 400ms after the last W/S press. Rapid cycling resets the timer each press.
+- Simulate paste: post CGEvent Cmd+V (keyCode 9, `.maskCommand`) to `.cgSessionEventTap`
+- Rapid W/S cycles update the clipboard each press; only the final resting entry gets pasted
+- If ring is empty: hotkey is swallowed, clipboard unchanged, no paste scheduled
 
 ### Menu Bar UI
 
@@ -107,9 +110,9 @@ Menu items, in order:
 
 - Rich clipboard types (images, files, attributed text, RTF, etc.)
 - Popup history browser or search UI
-- HUD, overlay, or toast notifications
+- ~~HUD, overlay, or toast notifications~~ (minimal CycleHUD is now in scope — see Stage 6)
 - Clipboard persistence to disk
-- Auto-paste into the focused app
+- ~~Auto-paste into the focused app~~ (debounced auto-paste is in scope via CycleHUD dismiss)
 - Cloud sync or cross-device support
 - Analytics or telemetry
 - Configurable hotkeys
@@ -130,6 +133,8 @@ cowpyfwendApp (@main)
                                                 │              └── polls NSPasteboard
                                                 ├── owns → HotkeyEngine     (platform)
                                                 │              └── CGEventTap
+                                                ├── owns → CycleHUD         (UI)
+                                                │              └── NSPanel near cursor
                                                 └── uses → LaunchAtLoginManager
 ```
 
@@ -173,6 +178,17 @@ Data flows in one direction: platform events → AppController → ClipboardRing
 - `func clearHistory()` — clears ring, updates historyCount
 - `func toggleEnabled()` — starts/stops monitor and hotkey engine
 - `func refreshAccessibilityStatus()` — polls `AXIsProcessTrusted()`
+
+### `CycleHUD` — `UI/CycleHUD.swift`
+
+- `NSPanel` subclass; non-activating, floats above all windows
+- Appears near the current mouse cursor position on first W/S press
+- Displays a single-line snippet of the current ring entry, updates on each cycle press
+- Shows position indicator: e.g. `[2 / 5]`
+- Auto-dismisses after 1.0s of no W/S presses; on dismiss: simulates Cmd+V paste
+- `show(text:position:index:total:)` — updates content and (re)starts dismiss timer
+- `hide()` — cancels timer, orders panel out without pasting
+- Owned by `AppController`; called from `cycleOlder()` / `cycleNewer()`
 
 ### `MenuBarView` — `UI/MenuBarView.swift`
 
@@ -244,18 +260,19 @@ User clicks Enabled toggle in menu
 
 ## Staged Roadmap
 
-| Stage | Name                     | Description                                         | Tests                      |
-| ----- | ------------------------ | --------------------------------------------------- | -------------------------- |
-| 0     | Docs                     | README.md, PLAN.md, .gitignore                      | —                          |
-| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit | —                          |
-| 2     | ClipboardRing            | Pure ring logic                                     | Full unit tests            |
-| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback           | Manual                     |
-| 4     | HotkeyEngine             | CGEventTap, key match, swallow                      | Manual                     |
-| 5     | AppController            | Full coordinator wiring all services                | Unit tests for state logic |
-| 6     | MenuBarView              | All required menu items, live state                 | Manual                     |
-| 7     | LaunchAtLoginManager     | SMAppService wired to menu toggle                   | Manual                     |
-| 8     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface      | Manual                     |
-| 9     | Integration & Acceptance | End-to-end manual, edge cases, polish               | Manual + all tests green   |
+| Stage | Name                     | Description                                              | Tests                      |
+| ----- | ------------------------ | -------------------------------------------------------- | -------------------------- |
+| 0     | Docs                     | README.md, PLAN.md, .gitignore                           | —                          |
+| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit      | —                          |
+| 2     | ClipboardRing            | Pure ring logic                                          | Full unit tests            |
+| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                | Manual                     |
+| 4     | HotkeyEngine             | CGEventTap, key match, swallow                           | Manual                     |
+| 5     | AppController            | Full coordinator wiring all services                     | Unit tests for state logic |
+| 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, debounce paste | Manual              |
+| 7     | MenuBarView              | All required menu items, live state                      | Manual                     |
+| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                        | Manual                     |
+| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface           | Manual                     |
+| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                    | Manual + all tests green   |
 
 Each stage must compile cleanly and pass all existing tests before the next stage begins.
 
@@ -352,7 +369,21 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Add unit tests for: state after init, toggleEnabled transitions, clearHistory resets count
 - **Done when:** Copy text → history count increments; hotkeys cycle and update clipboard; disable stops both; tests pass
 
-### Stage 6 — MenuBarView
+### Stage 6 — CycleHUD
+
+- Implement `CycleHUD` in `UI/CycleHUD.swift`
+- `NSPanel` with `NSWindowStyleMask`: `.borderless`, `.nonactivatingPanel`
+- `NSWindowLevel.floating` — always above other windows, never steals focus
+- Content: single `NSTextField` (non-editable) showing truncated current entry + `[index / total]`
+- Position: near current `NSEvent.mouseLocation`, offset so it doesn't obscure the cursor
+- `AppController` calls `hud.show(text:index:total:)` on every cycle press
+- `show(...)` updates label, repositions near cursor, orders panel front, resets a 1.0s dismiss timer
+- On timer fire: simulate Cmd+V paste, then hide panel
+- `hide()` cancels timer and orders panel out without pasting (used on `clearHistory`, `toggleEnabled` disable)
+- Remove debounce paste logic from `AppController.schedulePaste()` — CycleHUD owns the paste timing
+- **Done when:** HUD appears near cursor on first W/S press, updates each press, auto-pastes and disappears after 1s of inactivity
+
+### Stage 7 — MenuBarView
 
 - Implement `MenuBarView` in `UI/MenuBarView.swift`
 - All menu items per spec, in order
@@ -362,10 +393,10 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Clear history: `Button("Clear History")` → `controller.clearHistory()`
 - Accessibility row: if not granted, button opens settings via `NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)`
 - Quit: `Button("Quit cowpyfwend")` → `NSApplication.shared.terminate(nil)`
-- Launch at Login toggle: binding computed from `LaunchAtLoginManager` (wired fully in Stage 7)
+- Launch at Login toggle: binding computed from `LaunchAtLoginManager` (wired fully in Stage 8)
 - **Done when:** All menu items render, actions work, state reflects AppController changes
 
-### Stage 7 — LaunchAtLoginManager
+### Stage 8 — LaunchAtLoginManager
 
 - Implement `LaunchAtLoginManager` in `Services/LaunchAtLoginManager.swift`
 - `import ServiceManagement`
@@ -376,7 +407,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Wire into `AppController` or pass directly to `MenuBarView` binding
 - **Done when:** Launch at Login toggle persists across logout/login
 
-### Stage 8 — Accessibility Permission Handling
+### Stage 9 — Accessibility Permission Handling
 
 - On app launch: call `AXIsProcessTrusted()` — if false, do NOT call with prompt dict yet
 - On first `enable()` call: if not trusted, call `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])` to trigger system prompt
@@ -385,7 +416,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Handle `onTapDisabled` to surface mid-session revocation
 - **Done when:** Granting/revoking Accessibility is correctly reflected in menu at all times
 
-### Stage 9 — Integration & Acceptance
+### Stage 10 — Integration & Acceptance
 
 - Run full acceptance checklist (see Acceptance Criteria)
 - Fix any edge cases found during manual testing
@@ -472,7 +503,7 @@ A stage is done when all of the following are true:
 1. Code compiles with no errors
 2. No new Xcode warnings introduced
 3. All unit tests pass (⌘U green)
-4. Manual verification steps for the stage have been performed and confirmed
+4. Manual verification steps for the stage have been performed çd confirmed
 5. Git commit has been made with the correct message format
 
 ---

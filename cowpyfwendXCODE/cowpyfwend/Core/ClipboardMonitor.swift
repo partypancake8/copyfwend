@@ -29,6 +29,14 @@ final class ClipboardMonitor {
         timer = nil
     }
 
+    /// Resyncs the internal change-count baseline to the current pasteboard state.
+    ///
+    /// Call this immediately after writing to NSPasteboard so the next poll does
+    /// not treat that write as a new user copy.
+    func resyncChangeCount() {
+        lastChangeCount = NSPasteboard.general.changeCount
+    }
+
     private func poll() {
         let current = NSPasteboard.general.changeCount
         guard current != lastChangeCount else { return }

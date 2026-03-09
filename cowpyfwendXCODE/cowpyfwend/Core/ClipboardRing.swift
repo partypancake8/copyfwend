@@ -6,18 +6,26 @@ import Foundation
 /// duplicates, empty strings, and whitespace-only strings are never filtered.
 ///
 /// Cursor resets to the newest entry on every `append`. Cycling wraps at both ends.
+///
+/// First-press model: the first `cycleOlder` or `cycleNewer` after a new copy writes
+/// the current entry (newest) without moving the cursor — matching the terminal up-arrow
+/// mental model. Subsequent presses step through history. A new `append` resets this state.
 final class ClipboardRing {
 
     private var entries: [String] = []
     private var cursor: Int = 0
+    /// False after every append; set to true on the first cycle press.
+    /// While false, cycle calls return the current entry without moving.
+    private var cyclingActive = false
 
     /// Number of entries currently stored.
     var count: Int { entries.count }
 
-    /// Appends a new entry and resets the cursor to the newest position.
+    /// Appends a new entry, resets the cursor to the newest position, and resets cycling state.
     func append(_ text: String) {
         entries.append(text)
         cursor = entries.count - 1
+        cyclingActive = false
     }
 
     /// Returns the entry at the current cursor position, or `nil` if the ring is empty.
@@ -27,20 +35,31 @@ final class ClipboardRing {
     }
 
     /// Moves the cursor toward older entries (lower index), wrapping from oldest to newest.
+    /// First call after a copy does not move — it returns the newest entry (current position).
     func cycleOlder() {
         guard !entries.isEmpty else { return }
-        cursor = cursor == 0 ? entries.count - 1 : cursor - 1
+        if cyclingActive {
+            cursor = cursor == 0 ? entries.count - 1 : cursor - 1
+        } else {
+            cyclingActive = true
+        }
     }
 
     /// Moves the cursor toward newer entries (higher index), wrapping from newest to oldest.
+    /// First call after a copy does not move — it returns the newest entry (current position).
     func cycleNewer() {
         guard !entries.isEmpty else { return }
-        cursor = cursor == entries.count - 1 ? 0 : cursor + 1
+        if cyclingActive {
+            cursor = cursor == entries.count - 1 ? 0 : cursor + 1
+        } else {
+            cyclingActive = true
+        }
     }
 
-    /// Removes all entries and resets the cursor.
+    /// Removes all entries and resets the cursor and cycling state.
     func clear() {
         entries.removeAll()
         cursor = 0
+        cyclingActive = false
     }
 }

@@ -15,18 +15,6 @@ struct ClipboardRingTests {
         #expect(ring.currentEntry() == nil)
     }
 
-    @Test func cycleOlderOnEmptyRingIsNoop() {
-        let ring = ClipboardRing()
-        ring.cycleOlder()
-        #expect(ring.currentEntry() == nil)
-    }
-
-    @Test func cycleNewerOnEmptyRingIsNoop() {
-        let ring = ClipboardRing()
-        ring.cycleNewer()
-        #expect(ring.currentEntry() == nil)
-    }
-
     // MARK: - Single entry
 
     @Test func singleAppendCountIsOne() {
@@ -61,12 +49,23 @@ struct ClipboardRingTests {
 
     // MARK: - cycleOlder
 
-    @Test func cycleOlderMovesBackOne() {
+    @Test func firstCycleOlderStaysAtNewest() {
+        // First press after a copy must not move — returns the newest entry.
         let ring = ClipboardRing()
         ring.append("a")
         ring.append("b")
         ring.append("c")
         ring.cycleOlder()
+        #expect(ring.currentEntry() == "c")
+    }
+
+    @Test func secondCycleOlderMovesBackOne() {
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // first press — stays at c
+        ring.cycleOlder() // second press — moves to b
         #expect(ring.currentEntry() == "b")
     }
 
@@ -75,6 +74,7 @@ struct ClipboardRingTests {
         ring.append("a")
         ring.append("b")
         ring.append("c")
+        ring.cycleOlder() // c (no move)
         ring.cycleOlder() // b
         ring.cycleOlder() // a
         ring.cycleOlder() // wraps → c
@@ -83,11 +83,22 @@ struct ClipboardRingTests {
 
     // MARK: - cycleNewer
 
+    @Test func firstCycleNewerStaysAtNewest() {
+        // First press after a copy must not move — returns the newest entry.
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleNewer()
+        #expect(ring.currentEntry() == "c")
+    }
+
     @Test func cycleNewerFromNewestWrapsToOldest() {
         let ring = ClipboardRing()
         ring.append("a")
         ring.append("b")
         ring.append("c")
+        ring.cycleNewer() // c (no move)
         ring.cycleNewer() // wraps → a
         #expect(ring.currentEntry() == "a")
     }
@@ -97,6 +108,7 @@ struct ClipboardRingTests {
         ring.append("a")
         ring.append("b")
         ring.append("c")
+        ring.cycleNewer() // c (no move)
         ring.cycleNewer() // wraps → a
         ring.cycleNewer() // b
         #expect(ring.currentEntry() == "b")
@@ -109,6 +121,7 @@ struct ClipboardRingTests {
         ring.append("a")
         ring.append("b")
         ring.append("c")
+        ring.cycleOlder() // c (no move)
         ring.cycleOlder() // b
         ring.cycleOlder() // a — cursor not at newest
         ring.append("d")  // should reset to d
@@ -171,7 +184,8 @@ struct ClipboardRingTests {
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        // cycle older through all 3, should end back at newest
+        // First press: no move (c). Then step through b, a, wrap back to c.
+        ring.cycleOlder() // c (no move)
         ring.cycleOlder() // b
         ring.cycleOlder() // a
         ring.cycleOlder() // wraps → c
@@ -183,10 +197,59 @@ struct ClipboardRingTests {
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        // cycle newer through all 3, should end back at newest
+        // First press: no move (c). Then wrap to a, step b, step c.
+        ring.cycleNewer() // c (no move)
         ring.cycleNewer() // wraps → a
         ring.cycleNewer() // b
         ring.cycleNewer() // c
         #expect(ring.currentEntry() == "c")
+    }
+
+    // MARK: - First-press model / cycling session
+
+    @Test func appendResetsCyclingSessionFirstWIsNewest() {
+        // After a new copy, first W should always yield newest regardless of prior cycling.
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // c (no move)
+        ring.cycleOlder() // b — mid-session
+        ring.append("d")  // new copy resets session
+        ring.cycleOlder() // first W → d (no move)
+        #expect(ring.currentEntry() == "d")
+    }
+
+    @Test func mixedCycleOlderThenNewer() {
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // c (no move)
+        ring.cycleOlder() // b
+        ring.cycleOlder() // a
+        ring.cycleNewer() // b
+        ring.cycleNewer() // c
+        #expect(ring.currentEntry() == "c")
+    }
+
+    @Test func singleEntryCycleOlderStaysOnIt() {
+        let ring = ClipboardRing()
+        ring.append("only")
+        ring.cycleOlder() // no move (first press)
+        ring.cycleOlder() // wraps — still "only"
+        #expect(ring.currentEntry() == "only")
+    }
+
+    @Test func cycleOlderOnEmptyRingIsNoop() {
+        let ring = ClipboardRing()
+        ring.cycleOlder()
+        #expect(ring.currentEntry() == nil)
+    }
+
+    @Test func cycleNewerOnEmptyRingIsNoop() {
+        let ring = ClipboardRing()
+        ring.cycleNewer()
+        #expect(ring.currentEntry() == nil)
     }
 }

@@ -9,8 +9,8 @@ No popup UI. No chooser. No palette. No overlay. Just your clipboard history, cy
 ## What It Does
 
 - Monitors your clipboard and records every text entry you copy
-- `Option+W` cycles to an older clipboard entry and sets it as the live system clipboard
-- `Option+S` cycles to a newer clipboard entry and sets it as the live system clipboard
+- `Option+W` cycles to an older clipboard entry, sets it as the live system clipboard, and pastes it into the focused app
+- `Option+S` cycles to a newer clipboard entry, sets it as the live system clipboard, and pastes it into the focused app
 - Hotkeys are fully swallowed — they do not pass through to other apps
 - Runs always-on from the menu bar with no Dock presence
 
@@ -36,7 +36,7 @@ No popup UI. No chooser. No palette. No overlay. Just your clipboard history, cy
 - No rich clipboard types (images, files, attributed text, etc.)
 - No popup history browser or search UI
 - No clipboard persistence to disk
-- No auto-paste
+- ~~No auto-paste~~ (auto-paste via simulated Cmd+V is included)
 - No cloud sync or cross-device support
 - No analytics or telemetry
 - No inline replacement inside arbitrary apps beyond updating the live system clipboard
