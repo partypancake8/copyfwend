@@ -63,6 +63,8 @@ No popup UI. No chooser. No palette. No overlay. Just your clipboard history, cy
 
 Open `cowpyfwendXCODE/cowpyfwend.xcodeproj` in Xcode and run the `cowpyfwend` scheme.
 
+> **Note:** Xcode created the project as `cowpyfwendXCODE/cowpyfwend.xcodeproj` with sources at `cowpyfwendXCODE/cowpyfwend/`.
+
 On first launch, the app will request Accessibility permission. Grant it in:  
 **System Settings → Privacy & Security → Accessibility**
 
