@@ -1,0 +1,104 @@
+import CoreGraphics
+import AppKit
+
+/// Intercepts and swallows Option+W (cycle older) and Option+S (cycle newer) globally
+/// using a CGEventTap at the session level.
+///
+/// Requires Accessibility permission. Call `enable()` only after `AXIsProcessTrusted()` returns true.
+/// If the tap cannot be created (permission denied), `enable()` exits silently.
+/// Platform-specific. Not unit-testable in isolation.
+final class HotkeyEngine {
+
+    var onCycleOlder: (() -> Void)?
+    var onCycleNewer: (() -> Void)?
+    var onTapDisabled: (() -> Void)?
+
+    private var eventTap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+
+    // Key codes (US layout — hardware key positions, layout-independent)
+    fileprivate static let keyCodeW: CGKeyCode = 13
+    fileprivate static let keyCodeS: CGKeyCode = 1
+
+    func enable() {
+        guard eventTap == nil else { return }
+
+        let eventMask: CGEventMask =
+            (1 << CGEventType.keyDown.rawValue) |
+            (1 << CGEventType.tapDisabledByUserInput.rawValue) |
+            (1 << CGEventType.tapDisabledByTimeout.rawValue)
+
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: eventMask,
+            callback: hotkeyEventTapCallback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else { return }
+
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        eventTap = tap
+        runLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    func disable() {
+        guard let tap = eventTap else { return }
+        CGEvent.tapEnable(tap: tap, enable: false)
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        }
+        eventTap = nil
+        runLoopSource = nil
+    }
+
+    deinit {
+        disable()
+    }
+}
+
+// Top-level C-compatible callback — no captures allowed.
+// Self is bridged via the userInfo pointer using passUnretained (safe: HotkeyEngine outlives the tap).
+private func hotkeyEventTapCallback(
+    proxy: CGEventTapProxy,
+    type: CGEventType,
+    event: CGEvent,
+    userInfo: UnsafeMutableRawPointer?
+) -> Unmanaged<CGEvent>? {
+    guard let userInfo else { return Unmanaged.passRetained(event) }
+    let engine = Unmanaged<HotkeyEngine>.fromOpaque(userInfo).takeUnretainedValue()
+
+    switch type {
+    case .tapDisabledByUserInput, .tapDisabledByTimeout:
+        DispatchQueue.main.async { engine.onTapDisabled?() }
+        return Unmanaged.passRetained(event)
+
+    case .keyDown:
+        let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        let flags = event.flags
+
+        // Match pure Option only — must not have Command, Control, or Shift
+        guard flags.contains(.maskAlternate),
+              !flags.contains(.maskCommand),
+              !flags.contains(.maskControl),
+              !flags.contains(.maskShift) else {
+            return Unmanaged.passRetained(event)
+        }
+
+        switch keyCode {
+        case HotkeyEngine.keyCodeW:
+            DispatchQueue.main.async { engine.onCycleOlder?() }
+            return nil  // swallowed
+        case HotkeyEngine.keyCodeS:
+            DispatchQueue.main.async { engine.onCycleNewer?() }
+            return nil  // swallowed
+        default:
+            return Unmanaged.passRetained(event)
+        }
+
+    default:
+        return Unmanaged.passRetained(event)
+    }
+}

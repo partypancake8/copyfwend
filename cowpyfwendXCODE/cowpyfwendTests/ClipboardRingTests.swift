@@ -157,7 +157,6 @@ struct ClipboardRingTests {
         #expect(ring.count == 1)
         #expect(ring.currentEntry() == "")
     }
-
     @Test func whitespaceOnlyStringIsRecorded() {
         let ring = ClipboardRing()
         ring.append("   \t\n")
