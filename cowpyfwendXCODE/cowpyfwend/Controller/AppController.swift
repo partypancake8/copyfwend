@@ -12,6 +12,7 @@ final class AppController: ObservableObject {
     @Published private(set) var isEnabled: Bool = true
     @Published private(set) var historyCount: Int = 0
     @Published private(set) var accessibilityGranted: Bool = false
+    @Published private(set) var launchAtLoginEnabled: Bool = LaunchAtLoginManager.isEnabled
 
     private let ring = ClipboardRing()
     private let monitor = ClipboardMonitor()
@@ -111,6 +112,13 @@ final class AppController: ObservableObject {
             hotkey.disable()
             hud.hide()
         }
+    }
+
+    // MARK: - Launch at Login
+
+    func toggleLaunchAtLogin() {
+        LaunchAtLoginManager.toggle()
+        launchAtLoginEnabled = LaunchAtLoginManager.isEnabled
     }
 
     // MARK: - Accessibility

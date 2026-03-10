@@ -5,15 +5,9 @@ import SwiftUI
 ///
 /// Observes `AppController` via `@EnvironmentObject` and delegates all actions back to it.
 /// No business logic lives here — the view is a pure reflection of controller state.
-///
-/// Stage-8 note: `launchAtLogin` is a local placeholder `@State` until
-/// `LaunchAtLoginManager` (SMAppService) is wired in Stage 8.
 struct MenuBarView: View {
 
     @EnvironmentObject private var controller: AppController
-
-    /// Placeholder — replaced by a real `LaunchAtLoginManager` binding in Stage 8.
-    @State private var launchAtLogin: Bool = false
 
     var body: some View {
         // 1. App title — non-interactive label
@@ -29,9 +23,11 @@ struct MenuBarView: View {
 
         Divider()
 
-        // 5. Launch at Login — placeholder; fully wired in Stage 8
-        Toggle("Launch at Login", isOn: $launchAtLogin)
-            .disabled(true)
+        // 5. Launch at Login
+        Toggle("Launch at Login", isOn: Binding(
+            get: { controller.launchAtLoginEnabled },
+            set: { _ in controller.toggleLaunchAtLogin() }
+        ))
 
         Divider()
 
