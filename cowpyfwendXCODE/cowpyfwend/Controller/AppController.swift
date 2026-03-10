@@ -19,6 +19,7 @@ final class AppController: ObservableObject {
     private let hotkey = HotkeyEngine()
     private let hud = CycleHUD()
     private var trustPollTimer: Timer?
+    private var workspaceObserver: NSObjectProtocol?
 
     init() {
         accessibilityGranted = AXIsProcessTrusted()
@@ -40,7 +41,7 @@ final class AppController: ObservableObject {
         }
 
         hotkey.onTapDisabled = { [weak self] in
-            self?.accessibilityGranted = false
+            self?.handleTapDisabled()
         }
 
         monitor.start()
@@ -51,20 +52,34 @@ final class AppController: ObservableObject {
         hotkey.enable()
 
         if !accessibilityGranted {
-            print("[AppController] Accessibility not granted — grant in System Settings → Privacy & Security → Accessibility")
+            // Trigger the macOS Accessibility permission prompt on first enable attempt.
+            _ = AXIsProcessTrustedWithOptions(
+                [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true] as CFDictionary
+            )
+            print("[AppController] Accessibility not granted — permission prompt shown")
             startTrustPolling()
+        }
+
+        // Refresh Accessibility state whenever the user returns to any app after
+        // visiting System Settings → Privacy & Security → Accessibility.
+        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refreshAccessibilityStatus() }
         }
     }
 
     private func startTrustPolling() {
+        guard trustPollTimer == nil else { return }
         trustPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard AXIsProcessTrusted() else { return }
                 self.trustPollTimer?.invalidate()
                 self.trustPollTimer = nil
-                self.accessibilityGranted = true
-                self.hotkey.enable()
+                self.refreshAccessibilityStatus()
                 print("[AppController] Accessibility granted — hotkey engine enabled")
             }
         }
@@ -124,17 +139,29 @@ final class AppController: ObservableObject {
     // MARK: - Accessibility
 
     /// Re-checks AXIsProcessTrusted and enables/disables the hotkey engine accordingly.
+    /// Also manages the trust poll timer: stops it when trusted, starts it when not.
     func refreshAccessibilityStatus() {
         let trusted = AXIsProcessTrusted()
         accessibilityGranted = trusted
         if trusted && isEnabled {
             hotkey.enable()
+            trustPollTimer?.invalidate()
+            trustPollTimer = nil
         } else if !trusted {
             hotkey.disable()
+            startTrustPolling()
         }
     }
 
     // MARK: - Private
+
+    /// Called when CGEventTap signals it has been disabled mid-session.
+    /// This typically means the user revoked Accessibility in System Settings.
+    private func handleTapDisabled() {
+        hud.hide()
+        refreshAccessibilityStatus()
+        print("[AppController] CGEventTap disabled mid-session; refreshing Accessibility status")
+    }
 
     private func writeCurrentEntryToClipboard() {
         guard let text = ring.currentEntry() else { return }
