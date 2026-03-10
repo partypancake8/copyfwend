@@ -22,6 +22,10 @@ final class AppController: ObservableObject {
     init() {
         accessibilityGranted = AXIsProcessTrusted()
 
+        hud.onPaste = { [weak self] in
+            self?.ring.promoteCurrentToNewest()
+        }
+
         monitor.onNewEntry = { [weak self] text in
             self?.onNewEntry(text)
         }

@@ -59,6 +59,20 @@ final class ClipboardRing {
         }
     }
 
+    /// Promotes the current entry to the newest position in the ring and resets cycling state.
+    ///
+    /// Call after a paste. The pasted entry is moved (not duplicated) to the end of the ring,
+    /// matching the clipboard's actual state — the last written value is now the "newest" item.
+    /// Count is unchanged. The next cycle session will start on the promoted entry.
+    func promoteCurrentToNewest() {
+        guard !entries.isEmpty else { return }
+        let text = entries[cursor]
+        entries.remove(at: cursor)
+        entries.append(text)
+        cursor = entries.count - 1
+        cyclingActive = false
+    }
+
     /// Removes all entries and resets the cursor and cycling state.
     func clear() {
         entries.removeAll()

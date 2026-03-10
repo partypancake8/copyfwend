@@ -252,4 +252,69 @@ struct ClipboardRingTests {
         ring.cycleNewer()
         #expect(ring.currentEntry() == nil)
     }
+
+    // MARK: - promoteCurrentToNewest
+
+    @Test func promoteCurrentToNewestMovesOlderEntryToEnd() {
+        // Cycle to an older entry, promote it — it should appear as newest.
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // c (no move, first press)
+        ring.cycleOlder() // b
+        ring.promoteCurrentToNewest()  // b promoted to newest
+        #expect(ring.currentEntry() == "b")
+        #expect(ring.count == 3)        // no duplication
+    }
+
+    @Test func promoteCurrentToNewestOrdersRingCorrectly() {
+        // After promoting b from [a, b, c], ring should be [a, c, b].
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // c (no move)
+        ring.cycleOlder() // b
+        ring.promoteCurrentToNewest()
+        // Now cycle: first press stays on b (newest), then c, then a.
+        ring.cycleOlder() // b (no move — first press after promote)
+        #expect(ring.currentEntry() == "b")
+        ring.cycleOlder() // c (one step older)
+        #expect(ring.currentEntry() == "c")
+        ring.cycleOlder() // a
+        #expect(ring.currentEntry() == "a")
+    }
+
+    @Test func promoteCurrentToNewestResetsCyclingSession() {
+        // After promote, first cycle press must stay on the promoted entry.
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // c (no move)
+        ring.cycleOlder() // b
+        ring.promoteCurrentToNewest()
+        ring.cycleOlder() // first press — must stay on b, not move
+        #expect(ring.currentEntry() == "b")
+    }
+
+    @Test func promoteCurrentToNewestOnNewestIsNoop() {
+        // Promoting when already at newest leaves ring and cursor unchanged.
+        let ring = ClipboardRing()
+        ring.append("a")
+        ring.append("b")
+        ring.append("c")
+        ring.cycleOlder() // c (no move — now at newest)
+        ring.promoteCurrentToNewest()
+        #expect(ring.currentEntry() == "c")
+        #expect(ring.count == 3)
+    }
+
+    @Test func promoteCurrentToNewestOnEmptyRingIsNoop() {
+        let ring = ClipboardRing()
+        ring.promoteCurrentToNewest() // must not crash
+        #expect(ring.count == 0)
+        #expect(ring.currentEntry() == nil)
+    }
 }
