@@ -369,19 +369,22 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Add unit tests for: state after init, toggleEnabled transitions, clearHistory resets count
 - **Done when:** Copy text → history count increments; hotkeys cycle and update clipboard; disable stops both; tests pass
 
-### Stage 6 — CycleHUD
+### Stage 6 — CycleHUD ✅
 
-- Implement `CycleHUD` in `UI/CycleHUD.swift`
-- `NSPanel` with `NSWindowStyleMask`: `.borderless`, `.nonactivatingPanel`
-- `NSWindowLevel.floating` — always above other windows, never steals focus
-- Content: single `NSTextField` (non-editable) showing truncated current entry + `[index / total]`
-- Position: near current `NSEvent.mouseLocation`, offset so it doesn't obscure the cursor
-- `AppController` calls `hud.show(text:index:total:)` on every cycle press
-- `show(...)` updates label, repositions near cursor, orders panel front, resets a 1.0s dismiss timer
-- On timer fire: simulate Cmd+V paste, then hide panel
-- `hide()` cancels timer and orders panel out without pasting (used on `clearHistory`, `toggleEnabled` disable)
-- Remove debounce paste logic from `AppController.schedulePaste()` — CycleHUD owns the paste timing
-- **Done when:** HUD appears near cursor on first W/S press, updates each press, auto-pastes and disappears after 1s of inactivity
+- `UI/CycleHUD.swift` — `NSPanel` subclass, `.borderless + .nonactivatingPanel`, `NSWindowLevel.floating`
+- `NSVisualEffectView` content with `.popover` material (frosted glass, adaptive light/dark), 8pt corner radius
+- Main label: 13pt monospaced, `.labelColor`, word-wrap up to 5 lines
+- Displays: normalized entry text (real newlines preserved) + `[N / Total]` where 1 = most recent
+- Dynamic sizing: width shrinks to content or expands to `min(620pt, 40% screen width)`; height measured via `boundingRect` per wrapped content; char cap computed from font metrics × maxLines × screen width
+- Position: `NSEvent.mouseLocation + (16, 20)` offset, clamped to visible screen frame
+- Dismiss delay: `min(3.0, 0.4 + 0.3 × log(charCount + 1))` — logarithmic decay toward 3s cap
+- Countdown panel: separate small `NSPanel` (same material, 6pt radius) pinned above top-right corner of main HUD with 1pt overlap; same font/color; auto-sized; ticks every 0.1s
+- On timer fire: simulate Cmd+V (keyDown + keyUp, `.maskCommand`), fire `onPaste` callback, hide both panels
+- `onPaste` callback → `AppController` → `ring.promoteCurrentToNewest()` — moves pasted entry to newest ring position so clipboard state and ring order agree
+- `hide()` cancels both timers, hides both panels without pasting
+- `ClipboardRing.currentIndex: Int?` added to expose cursor position for `[N / Total]` display
+- `ClipboardRing.promoteCurrentToNewest()` added; 5 new unit tests; total 31 tests passing
+- **Done when:** HUD + countdown appear near cursor on first W/S, update each press, auto-paste + disappear after length-scaled delay
 
 ### Stage 7 — MenuBarView
 
