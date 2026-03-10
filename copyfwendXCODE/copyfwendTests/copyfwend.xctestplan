@@ -11,18 +11,18 @@
   "defaultOptions" : {
     "performanceAntipatternCheckerEnabled" : true,
     "targetForVariableExpansion" : {
-      "containerPath" : "container:cowpyfwend.xcodeproj",
+      "containerPath" : "container:copyfwend.xcodeproj",
       "identifier" : "B6EBA19F2F5E4C3C007A9E27",
-      "name" : "cowpyfwend"
+      "name" : "copyfwend"
     }
   },
   "testTargets" : [
     {
       "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:cowpyfwend.xcodeproj",
+        "containerPath" : "container:copyfwend.xcodeproj",
         "identifier" : "B6EBA1CA2F5E5402007A9E27",
-        "name" : "cowpyfwendTests"
+        "name" : "copyfwendTests"
       }
     }
   ],

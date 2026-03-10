@@ -1,4 +1,4 @@
-# cowpyfwend
+# copyfwend
 
 > **v0.1.0** — all 10 stages shipped.
 
@@ -63,9 +63,9 @@ A small floating HUD appears near the cursor while you cycle, showing the curren
 
 ### Build & Run
 
-Open `cowpyfwendXCODE/cowpyfwend.xcodeproj` in Xcode and run the `cowpyfwend` scheme.
+Open `copyfwendXCODE/copyfwend.xcodeproj` in Xcode and run the `copyfwend` scheme.
 
-> **Note:** Xcode created the project as `cowpyfwendXCODE/cowpyfwend.xcodeproj` with sources at `cowpyfwendXCODE/cowpyfwend/`.
+> **Note:** Xcode created the project as `copyfwendXCODE/copyfwend.xcodeproj` with sources at `copyfwendXCODE/copyfwend/`.
 
 On first launch, the app will request Accessibility permission. Grant it in:  
 **System Settings → Privacy & Security → Accessibility**
@@ -74,7 +74,7 @@ The app lives in the menu bar. There is no Dock icon.
 
 ### Run Tests
 
-In Xcode: **Product → Test** (`⌘U`), or select the `cowpyfwendTests` target.
+In Xcode: **Product → Test** (`⌘U`), or select the `copyfwendTests` target.
 
 Tests cover pure logic only (primarily `ClipboardRing`). Platform-specific components are verified manually.
 
@@ -85,19 +85,19 @@ You may browse and edit source files in VS Code alongside Xcode. Xcode is the bu
 ## Repo Structure
 
 ```
-cowpyfwend/
+copyfwend/
 ├── README.md                        ← This file
 ├── PLAN.md                          ← Internal engineering plan and roadmap
 ├── .gitignore
-└── cowpyfwendXCODE/                 ← Xcode project root
-    ├── cowpyfwend.xcodeproj/
-    ├── cowpyfwend/                  ← App source
+└── copyfwendXCODE/                 ← Xcode project root
+    ├── copyfwend.xcodeproj/
+    ├── copyfwend/                  ← App source
     │   ├── App/                     ← Entry point and app struct
     │   ├── Core/                    ← Pure logic and platform services
     │   ├── Controller/              ← App coordinator
     │   ├── UI/                      ← SwiftUI views
     │   └── Services/                ← Launch at login, etc.
-    └── cowpyfwendTests/             ← Unit tests
+    └── copyfwendTests/             ← Unit tests
 ```
 
 ## Status

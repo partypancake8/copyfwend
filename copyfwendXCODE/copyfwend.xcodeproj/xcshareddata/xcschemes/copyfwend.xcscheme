@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B6EBA19F2F5E4C3C007A9E27"
-               BuildableName = "cowpyfwend.app"
-               BlueprintName = "cowpyfwend"
-               ReferencedContainer = "container:cowpyfwend.xcodeproj">
+               BuildableName = "copyfwend.app"
+               BlueprintName = "copyfwend"
+               ReferencedContainer = "container:copyfwend.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -30,7 +30,7 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:cowpyfwendTests/cowpyfwend.xctestplan"
+            reference = "container:copyfwendTests/copyfwend.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>
@@ -41,9 +41,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B6EBA1CA2F5E5402007A9E27"
-               BuildableName = "cowpyfwendTests.xctest"
-               BlueprintName = "cowpyfwendTests"
-               ReferencedContainer = "container:cowpyfwend.xcodeproj">
+               BuildableName = "copyfwendTests.xctest"
+               BlueprintName = "copyfwendTests"
+               ReferencedContainer = "container:copyfwend.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -63,9 +63,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B6EBA19F2F5E4C3C007A9E27"
-            BuildableName = "cowpyfwend.app"
-            BlueprintName = "cowpyfwend"
-            ReferencedContainer = "container:cowpyfwend.xcodeproj">
+            BuildableName = "copyfwend.app"
+            BlueprintName = "copyfwend"
+            ReferencedContainer = "container:copyfwend.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -80,9 +80,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B6EBA19F2F5E4C3C007A9E27"
-            BuildableName = "cowpyfwend.app"
-            BlueprintName = "cowpyfwend"
-            ReferencedContainer = "container:cowpyfwend.xcodeproj">
+            BuildableName = "copyfwend.app"
+            BlueprintName = "copyfwend"
+            ReferencedContainer = "container:copyfwend.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

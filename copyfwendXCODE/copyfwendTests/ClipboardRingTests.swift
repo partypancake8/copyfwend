@@ -1,5 +1,5 @@
 import Testing
-@testable import cowpyfwend
+@testable import copyfwend
 
 struct ClipboardRingTests {
 

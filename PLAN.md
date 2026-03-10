@@ -1,8 +1,8 @@
-# cowpyfwend — Internal Engineering Plan
+# copyfwend — Internal Engineering Plan
 
 ## Product Summary
 
-cowpyfwend is a native macOS menu bar app that maintains an in-memory ring of all text strings the user copies to the clipboard. Global hotkeys allow silent backward and forward cycling through that ring, with each cycle writing the selected entry to the live system clipboard. No UI is shown during cycling. The app lives entirely in the menu bar and has no Dock presence.
+copyfwend is a native macOS menu bar app that maintains an in-memory ring of all text strings the user copies to the clipboard. Global hotkeys allow silent backward and forward cycling through that ring, with each cycle writing the selected entry to the live system clipboard. No UI is shown during cycling. The app lives entirely in the menu bar and has no Dock presence.
 
 The goal is a minimal, well-engineered tool that does one thing correctly, stays out of the way, and can be iterated safely.
 
@@ -78,7 +78,7 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 
 Menu items, in order:
 
-1. Title: `cowpyfwend` (non-interactive label)
+1. Title: `copyfwend` (non-interactive label)
 2. Separator
 3. Toggle: `Enabled` / `Disabled` — controls monitoring and hotkey interception
 4. Separator
@@ -89,7 +89,7 @@ Menu items, in order:
 9. Separator
 10. Status: `Accessibility: Granted` or `Accessibility: Not Granted` (non-interactive; tapping "Not Granted" opens System Settings)
 11. Separator
-12. `Quit cowpyfwend`
+12. `Quit copyfwend`
 
 ### Launch at Login
 
@@ -125,7 +125,7 @@ Menu items, in order:
 ## Architecture Overview
 
 ```
-cowpyfwendApp (@main)
+copyfwendApp (@main)
     └── MenuBarExtra
             └── MenuBarView ──observes──→ AppController
                                                 ├── owns → ClipboardRing    (pure logic)
@@ -202,10 +202,10 @@ Data flows in one direction: platform events → AppController → ClipboardRing
 - Uses `SMAppService.mainApp`
 - macOS 13+ only (minimum deployment target)
 
-### `cowpyfwendApp` — `App/cowpyfwendApp.swift`
+### `copyfwendApp` — `App/copyfwendApp.swift`
 
 - `@main struct`; `App` conformance
-- `MenuBarExtra("cowpyfwend", systemImage: "doc.on.clipboard")` with `MenuBarView`
+- `MenuBarExtra("copyfwend", systemImage: "doc.on.clipboard")` with `MenuBarView`
 - Creates and injects `AppController` as `@StateObject`
 - `Info.plist`: `LSUIElement = YES`
 
@@ -285,12 +285,12 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Replace `README.md` with product-stable documentation
 - Create `PLAN.md` (this file)
 - Add `.gitignore`
-- Resolve `cowpyfwendXCODE/.git` (remove if spurious)
+- Resolve `copyfwendXCODE/.git` (remove if spurious)
 - **Done when:** Both files committed, repo is clean
 
 ### Stage 1 — Xcode Project Scaffold
 
-- Create Xcode project: macOS App, SwiftUI, bundle ID `com.partypancake8.cowpyfwend`
+- Create Xcode project: macOS App, SwiftUI, bundle ID `com.partypancake8.copyfwend`
 - Set deployment target: macOS 13.0
 - Set `LSUIElement = YES` in `Info.plist` (suppresses Dock icon and app switcher entry)
 - Add `MenuBarExtra` to `@main` App struct with a system image icon
@@ -327,7 +327,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - On timer fire: compare `NSPasteboard.general.changeCount` to `lastChangeCount`
 - If changed: read string, guard non-nil, invoke `onNewEntry`
 - `start()` creates and schedules timer; `stop()` invalidates it
-- Wire to a stub call in `cowpyfwendApp` to verify console output
+- Wire to a stub call in `copyfwendApp` to verify console output
 - **Done when:** Copy text in any app, see print output confirming detection; existing tests still pass
 
 ### Stage 4 — HotkeyEngine
@@ -356,7 +356,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 ### Stage 5 — AppController
 
 - Implement `AppController` in `Controller/AppController.swift`
-- `ObservableObject`; injected as `@StateObject` in `cowpyfwendApp`
+- `ObservableObject`; injected as `@StateObject` in `copyfwendApp`
 - Wire `ClipboardMonitor.onNewEntry` → `self.onNewEntry(_:)`
 - Wire `HotkeyEngine.onCycleOlder` → `self.cycleOlder()`
 - Wire `HotkeyEngine.onCycleNewer` → `self.cycleNewer()`
@@ -395,7 +395,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - History count: `Text("History: \(controller.historyCount) entries")`
 - Clear history: `Button("Clear History")` → `controller.clearHistory()`
 - Accessibility row: if not granted, button opens settings via `NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)`
-- Quit: `Button("Quit cowpyfwend")` → `NSApplication.shared.terminate(nil)`
+- Quit: `Button("Quit copyfwend")` → `NSApplication.shared.terminate(nil)`
 - Launch at Login toggle: binding computed from `LaunchAtLoginManager` (wired fully in Stage 8)
 - **Done when:** All menu items render, actions work, state reflects AppController changes
 
@@ -431,7 +431,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 
 ## Testing Strategy
 
-### Unit Tests (automated, `cowpyfwendTests/`)
+### Unit Tests (automated, `copyfwendTests/`)
 
 | Component       | Tests                                                                      |
 | --------------- | -------------------------------------------------------------------------- |
@@ -479,7 +479,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 
 | Risk                                                                             | Severity | Mitigation                                                                              |
 | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `cowpyfwendXCODE/.git` conflicts with parent repo's git tracking                 | High     | Remove before Stage 1; see setup instructions                                           |
+| `copyfwendXCODE/.git` conflicts with parent repo's git tracking                 | High     | Remove before Stage 1; see setup instructions                                           |
 | `CGEventTap` silently fails without Accessibility                                | High     | Always check `AXIsProcessTrusted()` before enabling; surface in menu                    |
 | `CGEventTap` disabled mid-session on Accessibility revocation                    | Medium   | Handle `tapDisabledByUserInput/Timeout` event type; update menu state                   |
 | NSPasteboard polling delay (~0.5s) causes missed first copy after disable→enable | Low      | Acceptable for V1; document as known behavior                                           |

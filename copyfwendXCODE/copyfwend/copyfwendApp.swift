@@ -1,12 +1,12 @@
 import SwiftUI
 
 @main
-struct cowpyfwendApp: App {
+struct copyfwendApp: App {
 
     @StateObject private var appController = AppController()
 
     var body: some Scene {
-        MenuBarExtra("cowpyfwend", systemImage: "doc.on.clipboard") {
+        MenuBarExtra("copyfwend", systemImage: "doc.on.clipboard") {
             MenuBarView()
                 .environmentObject(appController)
         }

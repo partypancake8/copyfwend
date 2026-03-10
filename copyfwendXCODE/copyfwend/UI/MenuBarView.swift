@@ -11,7 +11,7 @@ struct MenuBarView: View {
 
     var body: some View {
         // 1. App title — non-interactive label
-        Text("cowpyfwend")
+        Text("copyfwend")
 
         Divider()
 
@@ -55,7 +55,7 @@ struct MenuBarView: View {
         Divider()
 
         // 12. Quit
-        Button("Quit cowpyfwend") {
+        Button("Quit copyfwend") {
             NSApplication.shared.terminate(nil)
         }
     }
