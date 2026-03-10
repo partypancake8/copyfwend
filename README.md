@@ -1,16 +1,19 @@
 # cowpyfwend
 
+> **v0.1.0** — all 10 stages shipped.
+
 A native macOS menu bar app that maintains a text-only clipboard history ring and lets you silently cycle the live system clipboard backward and forward with global hotkeys.
 
-No popup UI. No chooser. No palette. No overlay. Just your clipboard history, cycling silently behind the scenes.
+A small floating HUD appears near the cursor while you cycle, showing the current entry and a countdown until it auto-pastes. No chooser. No palette. No search UI. Just your clipboard history, cycling silently behind the scenes.
 
 ---
 
 ## What It Does
 
 - Monitors your clipboard and records every text entry you copy
-- `Option+W` cycles to an older clipboard entry, sets it as the live system clipboard, and pastes it into the focused app
-- `Option+S` cycles to a newer clipboard entry, sets it as the live system clipboard, and pastes it into the focused app
+- `Option+W` cycles to an older clipboard entry and writes it to the live system clipboard
+- `Option+S` cycles to a newer clipboard entry and writes it to the live system clipboard
+- After a short idle period a floating HUD auto-pastes the selected entry via Cmd+V and dismisses
 - Hotkeys are fully swallowed — they do not pass through to other apps
 - Runs always-on from the menu bar with no Dock presence
 
@@ -36,10 +39,9 @@ No popup UI. No chooser. No palette. No overlay. Just your clipboard history, cy
 - No rich clipboard types (images, files, attributed text, etc.)
 - No popup history browser or search UI
 - No clipboard persistence to disk
-- ~~No auto-paste~~ (auto-paste via simulated Cmd+V is included)
 - No cloud sync or cross-device support
 - No analytics or telemetry
-- No inline replacement inside arbitrary apps beyond updating the live system clipboard
+- No configurable hotkeys or ring size
 
 ## Stack
 
@@ -54,7 +56,7 @@ No popup UI. No chooser. No palette. No overlay. Just your clipboard history, cy
 ## Requirements
 
 - macOS 13.0 (Ventura) or later
-- Xcode 15 or later
+- Xcode 16 or later
 - Accessibility permission required at runtime for global hotkey interception
 
 ## Local Development
@@ -100,4 +102,4 @@ cowpyfwend/
 
 ## Status
 
-In active development. See [PLAN.md](PLAN.md) for the staged implementation roadmap and current stage.
+**v0.1.0 — complete.** All acceptance criteria met. See [PLAN.md](PLAN.md) for the full engineering record.
