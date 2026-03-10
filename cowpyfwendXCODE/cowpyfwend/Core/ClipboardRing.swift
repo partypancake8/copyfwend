@@ -21,6 +21,9 @@ final class ClipboardRing {
     /// Number of entries currently stored.
     var count: Int { entries.count }
 
+    /// The 0-based cursor position (0 = oldest, count−1 = newest), or `nil` if the ring is empty.
+    var currentIndex: Int? { entries.isEmpty ? nil : cursor }
+
     /// Appends a new entry, resets the cursor to the newest position, and resets cycling state.
     func append(_ text: String) {
         entries.append(text)

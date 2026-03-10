@@ -16,6 +16,7 @@ final class AppController: ObservableObject {
     private let ring = ClipboardRing()
     private let monitor = ClipboardMonitor()
     private let hotkey = HotkeyEngine()
+    private let hud = CycleHUD()
     private var trustPollTimer: Timer?
 
     init() {
@@ -77,11 +78,13 @@ final class AppController: ObservableObject {
     func cycleOlder() {
         ring.cycleOlder()
         writeCurrentEntryToClipboard()
+        showHUD()
     }
 
     func cycleNewer() {
         ring.cycleNewer()
         writeCurrentEntryToClipboard()
+        showHUD()
     }
 
     // MARK: - History management
@@ -89,6 +92,7 @@ final class AppController: ObservableObject {
     func clearHistory() {
         ring.clear()
         historyCount = ring.count
+        hud.hide()
     }
 
     // MARK: - Enable / disable
@@ -101,6 +105,7 @@ final class AppController: ObservableObject {
         } else {
             monitor.stop()
             hotkey.disable()
+            hud.hide()
         }
     }
 
@@ -126,6 +131,14 @@ final class AppController: ObservableObject {
         pb.setString(text, forType: .string)
         monitor.resyncChangeCount()
         print("[AppController] clipboard → \(text.prefix(80))")
-        // Paste will be triggered by CycleHUD after its dismiss debounce (Stage 6).
+    }
+
+    /// Computes display index and forwards the current entry to the CycleHUD.
+    /// No-ops if the ring is empty (guard in cycleOlder/cycleNewer already ensures this).
+    private func showHUD() {
+        guard let text = ring.currentEntry(), let cursorIdx = ring.currentIndex else { return }
+        // 1-based: 1 = most recent (highest cursor), Total = oldest (cursor 0)
+        let displayIndex = ring.count - cursorIdx
+        hud.show(text: text, index: displayIndex, total: ring.count)
     }
 }

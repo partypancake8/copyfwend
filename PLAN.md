@@ -260,19 +260,19 @@ User clicks Enabled toggle in menu
 
 ## Staged Roadmap
 
-| Stage | Name                     | Description                                              | Tests                      |
-| ----- | ------------------------ | -------------------------------------------------------- | -------------------------- |
-| 0     | Docs                     | README.md, PLAN.md, .gitignore                           | —                          |
-| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit      | —                          |
-| 2     | ClipboardRing            | Pure ring logic                                          | Full unit tests            |
-| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                | Manual                     |
-| 4     | HotkeyEngine             | CGEventTap, key match, swallow                           | Manual                     |
-| 5     | AppController            | Full coordinator wiring all services                     | Unit tests for state logic |
-| 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, debounce paste | Manual              |
-| 7     | MenuBarView              | All required menu items, live state                      | Manual                     |
-| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                        | Manual                     |
-| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface           | Manual                     |
-| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                    | Manual + all tests green   |
+| Stage | Name                     | Description                                                    | Tests                      |
+| ----- | ------------------------ | -------------------------------------------------------------- | -------------------------- |
+| 0     | Docs                     | README.md, PLAN.md, .gitignore                                 | —                          |
+| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit            | —                          |
+| 2     | ClipboardRing            | Pure ring logic                                                | Full unit tests            |
+| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                      | Manual                     |
+| 4     | HotkeyEngine             | CGEventTap, key match, swallow                                 | Manual                     |
+| 5     | AppController            | Full coordinator wiring all services                           | Unit tests for state logic |
+| 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, debounce paste | Manual                     |
+| 7     | MenuBarView              | All required menu items, live state                            | Manual                     |
+| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                              | Manual                     |
+| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface                 | Manual                     |
+| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                          | Manual + all tests green   |
 
 Each stage must compile cleanly and pass all existing tests before the next stage begins.
 
