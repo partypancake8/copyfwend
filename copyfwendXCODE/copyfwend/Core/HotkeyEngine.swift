@@ -12,6 +12,20 @@ final class HotkeyEngine {
     var onCycleOlder: (() -> Void)?
     var onCycleNewer: (() -> Void)?
     var onTapDisabled: (() -> Void)?
+    /// Fired on the main thread when the user releases the Option key after cycling.
+    var onOptionReleased: (() -> Void)?
+    /// Fired on the main thread when the user presses Option+Q during a cycling session.
+    /// Use this to cancel the pending paste and hide the HUD without pasting.
+    var onCancelCycle: (() -> Void)?
+
+    /// Tracks whether the user pressed Option+W or Option+S since the last release.
+    fileprivate var isCycling: Bool = false
+
+    /// Clears cycling state without firing the release callback.
+    /// Call this when history is cleared or the engine is disabled mid-session.
+    func resetCyclingSession() {
+        isCycling = false
+    }
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -19,12 +33,14 @@ final class HotkeyEngine {
     // Key codes (US layout — hardware key positions, layout-independent)
     fileprivate static let keyCodeW: CGKeyCode = 13
     fileprivate static let keyCodeS: CGKeyCode = 1
+    fileprivate static let keyCodeQ: CGKeyCode = 12
 
     func enable() {
         guard eventTap == nil else { return }
 
         let eventMask: CGEventMask =
             (1 << CGEventType.keyDown.rawValue) |
+            (1 << CGEventType.flagsChanged.rawValue) |
             (1 << CGEventType.tapDisabledByUserInput.rawValue) |
             (1 << CGEventType.tapDisabledByTimeout.rawValue)
 
@@ -89,14 +105,29 @@ private func hotkeyEventTapCallback(
 
         switch keyCode {
         case HotkeyEngine.keyCodeW:
+            engine.isCycling = true
             DispatchQueue.main.async { engine.onCycleOlder?() }
             return nil  // swallowed
         case HotkeyEngine.keyCodeS:
+            engine.isCycling = true
             DispatchQueue.main.async { engine.onCycleNewer?() }
+            return nil  // swallowed
+        case HotkeyEngine.keyCodeQ where engine.isCycling:
+            // Option+Q during a cycling session — cancel paste, do not step ring.
+            engine.isCycling = false
+            DispatchQueue.main.async { engine.onCancelCycle?() }
             return nil  // swallowed
         default:
             return Unmanaged.passRetained(event)
         }
+
+    case .flagsChanged:
+        // If the user releases Option while a cycling session is active, fire the paste callback.
+        if engine.isCycling && !event.flags.contains(.maskAlternate) {
+            engine.isCycling = false
+            DispatchQueue.main.async { engine.onOptionReleased?() }
+        }
+        return Unmanaged.passRetained(event)  // never swallow flags
 
     default:
         return Unmanaged.passRetained(event)

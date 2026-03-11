@@ -67,12 +67,12 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 
 ### Cycling Behavior
 
-- On hotkey: cycle ring → read `currentEntry()` → if non-nil, write to `NSPasteboard`, then schedule debounced paste
+- On hotkey: cycle ring → read `currentEntry()` → if non-nil, write to `NSPasteboard`, show/update CycleHUD
 - Write: `NSPasteboard.general.clearContents()` then `NSPasteboard.general.setString(_:forType:)`
-- Debounce: paste fires 400ms after the last W/S press. Rapid cycling resets the timer each press.
+- Paste on release: paste fires when the user releases the Option modifier key after cycling. The HUD stays visible until Option is released or cycling is interrupted.
 - Simulate paste: post CGEvent Cmd+V (keyCode 9, `.maskCommand`) to `.cgSessionEventTap`
-- Rapid W/S cycles update the clipboard each press; only the final resting entry gets pasted
-- If ring is empty: hotkey is swallowed, clipboard unchanged, no paste scheduled
+- Rapid W/S cycles update the clipboard each press; only the final resting entry (selected when Option is released) gets pasted
+- If ring is empty: hotkey is swallowed, clipboard unchanged, no paste
 
 ### Menu Bar UI
 
@@ -112,7 +112,7 @@ Menu items, in order:
 - Popup history browser or search UI
 - ~~HUD, overlay, or toast notifications~~ (minimal CycleHUD is now in scope — see Stage 6)
 - Clipboard persistence to disk
-- ~~Auto-paste into the focused app~~ (debounced auto-paste is in scope via CycleHUD dismiss)
+- ~~Auto-paste into the focused app~~ (paste-on-release is in scope via CycleHUD + Option key release)
 - Cloud sync or cross-device support
 - Analytics or telemetry
 - Configurable hotkeys
@@ -161,10 +161,11 @@ Data flows in one direction: platform events → AppController → ClipboardRing
 ### `HotkeyEngine` — `Core/HotkeyEngine.swift`
 
 - Class; manages a `CFMachPort` event tap via `CGEvent.tapCreate`
-- Callbacks: `onCycleOlder: () -> Void`, `onCycleNewer: () -> Void`
+- Callbacks: `onCycleOlder: () -> Void`, `onCycleNewer: () -> Void`, `onOptionReleased: () -> Void`
 - `enable()` / `disable()` — attaches/detaches from the run loop
-- Returns `nil` from tap callback to swallow matched events
+- Returns `nil` from tap callback to swallow matched W/S events; never swallows `flagsChanged`
 - Handles tap-disabled events; calls `onTapDisabled: () -> Void`
+- Tracks `isCycling: Bool`; set to `true` on W/S press, cleared on Option release; `resetCyclingSession()` clears without firing
 - Platform-specific; requires Accessibility
 
 ### `AppController` — `Controller/AppController.swift`
@@ -183,12 +184,13 @@ Data flows in one direction: platform events → AppController → ClipboardRing
 
 - `NSPanel` subclass; non-activating, floats above all windows
 - Appears near the current mouse cursor position on first W/S press
-- Displays a single-line snippet of the current ring entry, updates on each cycle press
+- Displays a snippet of the current ring entry, updates on each cycle press
 - Shows position indicator: e.g. `[2 / 5]`
-- Auto-dismisses after 1.0s of no W/S presses; on dismiss: simulates Cmd+V paste
-- `show(text:position:index:total:)` — updates content and (re)starts dismiss timer
-- `hide()` — cancels timer, orders panel out without pasting
-- Owned by `AppController`; called from `cycleOlder()` / `cycleNewer()`
+- Paste fires when `commitPaste()` is called (triggered by `AppController` on Option key release)
+- `show(text:index:total:)` — updates content, repositions near cursor
+- `commitPaste()` — simulates Cmd+V paste, fires `onPaste`, hides panel
+- `hide()` — orders panel out without pasting
+- Owned by `AppController`; called from `cycleOlder()` / `cycleNewer()` / `commitPaste()`
 
 ### `MenuBarView` — `UI/MenuBarView.swift`
 
@@ -268,7 +270,7 @@ User clicks Enabled toggle in menu
 | 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                      | Manual                     |
 | 4     | HotkeyEngine             | CGEventTap, key match, swallow                                 | Manual                     |
 | 5     | AppController            | Full coordinator wiring all services                           | Unit tests for state logic |
-| 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, debounce paste | Manual                     |
+| 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, paste on Option release | Manual                     |
 | 7     | MenuBarView              | All required menu items, live state                            | Manual                     |
 | 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                              | Manual                     |
 | 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface                 | Manual                     |
@@ -377,14 +379,13 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - Displays: normalized entry text (real newlines preserved) + `[N / Total]` where 1 = most recent
 - Dynamic sizing: width shrinks to content or expands to `min(620pt, 40% screen width)`; height measured via `boundingRect` per wrapped content; char cap computed from font metrics × maxLines × screen width
 - Position: `NSEvent.mouseLocation + (16, 20)` offset, clamped to visible screen frame
-- Dismiss delay: `min(3.0, 0.4 + 0.3 × log(charCount + 1))` — logarithmic decay toward 3s cap
-- Countdown panel: separate small `NSPanel` (same material, 6pt radius) pinned above top-right corner of main HUD with 1pt overlap; same font/color; auto-sized; ticks every 0.1s
-- On timer fire: simulate Cmd+V (keyDown + keyUp, `.maskCommand`), fire `onPaste` callback, hide both panels
+- **Paste on Option release**: no auto-dismiss timer; HUD stays visible until `commitPaste()` is called
+- `commitPaste()` → `pasteAndHide()` → simulate Cmd+V, fire `onPaste` callback, hide panel
 - `onPaste` callback → `AppController` → `ring.promoteCurrentToNewest()` — moves pasted entry to newest ring position so clipboard state and ring order agree
-- `hide()` cancels both timers, hides both panels without pasting
+- `hide()` orders panel out without pasting
 - `ClipboardRing.currentIndex: Int?` added to expose cursor position for `[N / Total]` display
 - `ClipboardRing.promoteCurrentToNewest()` added; 5 new unit tests; total 31 tests passing
-- **Done when:** HUD + countdown appear near cursor on first W/S, update each press, auto-paste + disappear after length-scaled delay
+- **Done when:** HUD appears near cursor on first W/S, updates each press, pastes + disappears on Option release
 
 ### Stage 7 — MenuBarView
 
@@ -469,7 +470,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 - [x] Accessibility permission state is correctly reflected in menu
 - [x] Revoking Accessibility mid-session is reflected in menu
 - [x] Granting Accessibility and re-enabling starts hotkey interception
-- [x] CycleHUD appears near cursor during cycling, auto-pastes on dismiss (Stage 6, in scope)
+- [x] CycleHUD appears near cursor during cycling, pastes on Option key release (Stage 6, in scope)
 - [x] App compiles cleanly with zero warnings
 - [x] All unit tests pass
 

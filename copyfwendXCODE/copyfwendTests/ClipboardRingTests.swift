@@ -69,16 +69,16 @@ struct ClipboardRingTests {
         #expect(ring.currentEntry() == "b")
     }
 
-    @Test func cycleOlderFromOldestWrapsToNewest() {
+    @Test func cycleOlderFromOldestClampsAtOldest() {
         let ring = ClipboardRing()
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        ring.cycleOlder() // c (no move)
+        ring.cycleOlder() // c (no move — first press)
         ring.cycleOlder() // b
-        ring.cycleOlder() // a
-        ring.cycleOlder() // wraps → c
-        #expect(ring.currentEntry() == "c")
+        ring.cycleOlder() // a — at oldest
+        ring.cycleOlder() // clamped — stays at a
+        #expect(ring.currentEntry() == "a")
     }
 
     // MARK: - cycleNewer
@@ -93,14 +93,14 @@ struct ClipboardRingTests {
         #expect(ring.currentEntry() == "c")
     }
 
-    @Test func cycleNewerFromNewestWrapsToOldest() {
+    @Test func cycleNewerFromNewestClampsAtNewest() {
         let ring = ClipboardRing()
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        ring.cycleNewer() // c (no move)
-        ring.cycleNewer() // wraps → a
-        #expect(ring.currentEntry() == "a")
+        ring.cycleNewer() // c (no move — first press, already at newest)
+        ring.cycleNewer() // clamped — stays at c
+        #expect(ring.currentEntry() == "c")
     }
 
     @Test func cycleNewerFromOldestMovesForwardOne() {
@@ -108,9 +108,10 @@ struct ClipboardRingTests {
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        ring.cycleNewer() // c (no move)
-        ring.cycleNewer() // wraps → a
-        ring.cycleNewer() // b
+        ring.cycleOlder() // c (no move — first press)
+        ring.cycleOlder() // b
+        ring.cycleOlder() // a — at oldest
+        ring.cycleNewer() // b — moves forward one
         #expect(ring.currentEntry() == "b")
     }
 
@@ -179,29 +180,29 @@ struct ClipboardRingTests {
 
     // MARK: - Wraparound symmetry
 
-    @Test func fullCycleOlderReturnsToStart() {
+    @Test func fullCycleOlderStopsAtOldest() {
         let ring = ClipboardRing()
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        // First press: no move (c). Then step through b, a, wrap back to c.
-        ring.cycleOlder() // c (no move)
+        // First press: no move (c). Then step b, a — clamps at oldest.
+        ring.cycleOlder() // c (no move — first press)
         ring.cycleOlder() // b
-        ring.cycleOlder() // a
-        ring.cycleOlder() // wraps → c
-        #expect(ring.currentEntry() == "c")
+        ring.cycleOlder() // a — at oldest
+        ring.cycleOlder() // clamped — stays at a
+        #expect(ring.currentEntry() == "a")
     }
 
-    @Test func fullCycleNewerReturnsToStart() {
+    @Test func fullCycleNewerClampsAtNewest() {
         let ring = ClipboardRing()
         ring.append("a")
         ring.append("b")
         ring.append("c")
-        // First press: no move (c). Then wrap to a, step b, step c.
-        ring.cycleNewer() // c (no move)
-        ring.cycleNewer() // wraps → a
-        ring.cycleNewer() // b
-        ring.cycleNewer() // c
+        // First press: no move (already at newest). Further presses clamp at c.
+        ring.cycleNewer() // c (no move — first press)
+        ring.cycleNewer() // clamped — stays at c
+        ring.cycleNewer() // stays at c
+        ring.cycleNewer() // stays at c
         #expect(ring.currentEntry() == "c")
     }
 
@@ -237,7 +238,7 @@ struct ClipboardRingTests {
         let ring = ClipboardRing()
         ring.append("only")
         ring.cycleOlder() // no move (first press)
-        ring.cycleOlder() // wraps — still "only"
+        ring.cycleOlder() // clamped — still "only"
         #expect(ring.currentEntry() == "only")
     }
 

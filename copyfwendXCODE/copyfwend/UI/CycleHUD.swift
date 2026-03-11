@@ -4,22 +4,19 @@ import CoreGraphics
 /// Floating non-activating panel displayed near the cursor while the user cycles clipboard history.
 ///
 /// Shows the current ring entry (truncated) and a position indicator `[N / Total]` where
-/// 1 = most recent entry and Total = oldest. Auto-pastes via Cmd+V and dismisses after 1.0s
-/// of cycling inactivity. Never steals keyboard focus.
+/// 1 = most recent entry and Total = oldest. Paste is triggered by calling `commitPaste()`
+/// when the user releases the Option modifier key. Never steals keyboard focus.
 ///
-/// Owned by `AppController`. Call `show(text:index:total:)` on every cycle press and
-/// `hide()` when cycling is interrupted (clear, disable).
+/// Owned by `AppController`. Call `show(text:index:total:)` on every cycle press,
+/// `commitPaste()` on Option release, and `hide()` when cycling is interrupted (clear, disable).
 final class CycleHUD: NSPanel {
 
-    private let label = NSTextField(labelWithString: "")
-    private var countdownPanel: NSPanel?
-    private var countdownField: NSTextField?
-    private var dismissTimer: Timer?
-    private var countdownUpdateTimer: Timer?
-    private var dismissAt: Date = .distantFuture
+    private let label      = NSTextField(labelWithString: "")
+    private let badgeLabel  = NSTextField(labelWithString: "")
+    private var badgePanel: NSPanel!
 
     /// Called on the main thread immediately after a paste is simulated.
-    /// Wire this to `ClipboardRing.commitPaste()` via `AppController`.
+    /// Wire this to `ClipboardRing.promoteCurrentToNewest()` via `AppController`.
     var onPaste: (() -> Void)?
 
     private static let hPad:             CGFloat      = 12
@@ -29,11 +26,6 @@ final class CycleHUD: NSPanel {
     private static let absoluteMaxWidth: CGFloat      = 620
     private static let maxLines:         Int          = 5
     private static let fontSize:         CGFloat      = 13
-    // Dismiss delay: 0.4s base + logarithmic growth, capped at 3.0s.
-    // ~5 chars → 0.9s  |  ~50 chars → 1.6s  |  ~500 chars → 2.3s  |  ~5000 chars → 3.0s
-    private static let delayBase:        TimeInterval = 0.4
-    private static let delayScale:       TimeInterval = 0.3
-    private static let delayMax:         TimeInterval = 3.0
     /// Cursor offset so the HUD appears above and to the right of the pointer.
     private static let cursorOffset:     NSPoint      = NSPoint(x: 16, y: 20)
 
@@ -53,7 +45,7 @@ final class CycleHUD: NSPanel {
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         setupContent()
-        buildCountdownPanel()
+        setupBadge()
     }
 
     private func setupContent() {
@@ -85,8 +77,7 @@ final class CycleHUD: NSPanel {
 
     // MARK: - Public API
 
-    /// Updates the HUD label, resizes to fit, repositions near the cursor,
-    /// and resets the dismiss timer.
+    /// Updates the HUD label, resizes to fit, and repositions near the cursor.
     ///
     /// - Parameters:
     ///   - text: The current clipboard entry.
@@ -109,86 +100,29 @@ final class CycleHUD: NSPanel {
             ? String(normalized.prefix(charLimit)).appending("…")
             : normalized
 
-        label.stringValue = "\(display)  [\(index) / \(total)]"
+        label.stringValue = display
 
         resizePanel(maxPanelWidth: maxPanelWidth)
         repositionNearCursor()
         if !isVisible { orderFront(nil) }
-        countdownPanel?.orderFront(nil)
-        resetDismissTimer(charCount: normalized.count)
+        updateBadge(index: index, total: total)
     }
 
-    /// Cancels the dismiss timer and hides the panel without simulating paste.
+    /// Hides the panel without simulating paste.
     ///
     /// Call when history is cleared or the app is disabled mid-cycle.
     func hide() {
-        dismissTimer?.invalidate()
-        dismissTimer = nil
-        countdownUpdateTimer?.invalidate()
-        countdownUpdateTimer = nil
-        countdownPanel?.orderOut(nil)
+        badgePanel.orderOut(nil)
         orderOut(nil)
+    }
+
+    /// Triggers paste and hides the HUD. Call when the user releases the Option modifier key.
+    func commitPaste() {
+        pasteAndHide()
     }
 
     // MARK: - Private
 
-    private func buildCountdownPanel() {
-        let cPanel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 60, height: Self.fontSize + 14),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        cPanel.level = .floating
-        cPanel.isOpaque = false
-        cPanel.backgroundColor = .clear
-        cPanel.hasShadow = true
-        cPanel.isReleasedWhenClosed = false
-        cPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-
-        let effect = NSVisualEffectView()
-        effect.material = .popover
-        effect.blendingMode = .behindWindow
-        effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = 6
-        effect.layer?.masksToBounds = true
-
-        let field = NSTextField(labelWithString: "")
-        field.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
-        field.textColor = .labelColor
-        field.alignment = .center
-        field.isSelectable = false
-        field.translatesAutoresizingMaskIntoConstraints = false
-
-        effect.addSubview(field)
-        NSLayoutConstraint.activate([
-            field.centerXAnchor.constraint(equalTo: effect.centerXAnchor),
-            field.centerYAnchor.constraint(equalTo: effect.centerYAnchor),
-        ])
-        cPanel.contentView = effect
-        countdownPanel = cPanel
-        countdownField = field
-    }
-
-    /// Resizes the countdown panel to fit its current text, then re-pins it to the main panel.
-    private func resizeCountdownPanel() {
-        guard let field = countdownField, let cPanel = countdownPanel,
-              let font = field.font else { return }
-        let textW = ceil((field.stringValue as NSString)
-            .size(withAttributes: [.font: font]).width)
-        cPanel.setContentSize(NSSize(width: max(44, textW + 20),
-                                     height: Self.fontSize + 14))
-        positionCountdownPanel()
-    }
-
-    /// Pins the countdown panel directly above the top-right corner of the main HUD.
-    private func positionCountdownPanel() {
-        guard let cPanel = countdownPanel else { return }
-        let mf = self.frame
-        // 1pt overlap so the two boxes look connected, not floating independently
-        cPanel.setFrameOrigin(NSPoint(x: mf.maxX - cPanel.frame.width, y: mf.maxY - 1))
-    }
     /// at the label font, multiplied by maxLines.
     private func screenCharLimit(containerWidth: CGFloat) -> Int {
         guard let font = label.font else { return 300 }
@@ -235,31 +169,6 @@ final class CycleHUD: NSPanel {
         }
 
         setFrameOrigin(origin)
-        positionCountdownPanel()
-    }
-
-    private func resetDismissTimer(charCount: Int) {
-        let delay = min(Self.delayMax,
-                        Self.delayBase + Self.delayScale * log(Double(charCount) + 1))
-        dismissAt = Date().addingTimeInterval(delay)
-        dismissTimer?.invalidate()
-        dismissTimer = Timer.scheduledTimer(
-            withTimeInterval: delay,
-            repeats: false
-        ) { [weak self] _ in
-            self?.pasteAndHide()
-        }
-        // Tick every 0.1s to update the countdown display
-        countdownUpdateTimer?.invalidate()
-        countdownUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            let remaining = max(0, self.dismissAt.timeIntervalSinceNow)
-            self.countdownField?.stringValue = String(format: "%.1fs", remaining)
-            self.resizeCountdownPanel()
-        }
-        // Populate immediately so the label isn't blank for the first 0.1s
-        countdownField?.stringValue = String(format: "%.1fs", delay)
-        resizeCountdownPanel()
     }
 
     private func pasteAndHide() {
@@ -280,5 +189,70 @@ final class CycleHUD: NSPanel {
         keyUp.flags   = .maskCommand
         keyDown.post(tap: .cgSessionEventTap)
         keyUp.post(tap: .cgSessionEventTap)
+    }
+
+    // MARK: - Badge panel
+
+    private func setupBadge() {
+        let badgeWindow = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 60, height: 28),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        badgeWindow.level = .floating
+        badgeWindow.isOpaque = false
+        badgeWindow.backgroundColor = .clear
+        badgeWindow.hasShadow = true
+        badgeWindow.isReleasedWhenClosed = false
+        badgeWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        let effect = NSVisualEffectView()
+        effect.material = .popover
+        effect.blendingMode = .behindWindow
+        effect.state = .active
+        effect.wantsLayer = true
+        effect.layer?.cornerRadius = 6
+        effect.layer?.masksToBounds = true
+
+        badgeLabel.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
+        badgeLabel.textColor = .labelColor
+        badgeLabel.isSelectable = false
+        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        effect.addSubview(badgeLabel)
+        NSLayoutConstraint.activate([
+            badgeLabel.topAnchor.constraint(equalTo: effect.topAnchor, constant: 5),
+            badgeLabel.bottomAnchor.constraint(equalTo: effect.bottomAnchor, constant: -5),
+            badgeLabel.leadingAnchor.constraint(equalTo: effect.leadingAnchor, constant: 8),
+            badgeLabel.trailingAnchor.constraint(equalTo: effect.trailingAnchor, constant: -8),
+        ])
+        badgeWindow.contentView = effect
+        badgePanel = badgeWindow
+    }
+
+    /// Sizes and positions the badge panel at the top-right corner of the main panel with 1pt overlap.
+    private func updateBadge(index: Int, total: Int) {
+        badgeLabel.stringValue = "\(index) / \(total)"
+
+        guard let font = badgeLabel.font else { return }
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let textSize = (badgeLabel.stringValue as NSString).size(withAttributes: attrs)
+        let hPad: CGFloat = 8
+        let vPad: CGFloat = 5
+        let badgeWidth  = ceil(textSize.width)  + hPad * 2
+        let badgeHeight = ceil(textSize.height) + vPad * 2
+
+        // Pin badge so its bottom-right overlaps the top-right of the main panel by 1pt.
+        let mainFrame   = self.frame
+        let badgeOrigin = NSPoint(x: mainFrame.maxX - badgeWidth, y: mainFrame.maxY - 1)
+        let badgeFrame  = NSRect(origin: badgeOrigin, size: NSSize(width: badgeWidth, height: badgeHeight))
+
+        if badgePanel.isVisible {
+            badgePanel.setFrame(badgeFrame, display: true)
+        } else {
+            badgePanel.setFrame(badgeFrame, display: false)
+            badgePanel.orderFront(nil)
+        }
     }
 }

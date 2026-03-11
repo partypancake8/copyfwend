@@ -5,7 +5,7 @@ import Foundation
 /// Pure Swift — no platform dependencies. All entries are recorded as-is:
 /// duplicates, empty strings, and whitespace-only strings are never filtered.
 ///
-/// Cursor resets to the newest entry on every `append`. Cycling wraps at both ends.
+/// Cursor resets to the newest entry on every `append`. Cycling clamps at both ends — no wraparound.
 ///
 /// First-press model: the first `cycleOlder` or `cycleNewer` after a new copy writes
 /// the current entry (newest) without moving the cursor — matching the terminal up-arrow
@@ -37,23 +37,23 @@ final class ClipboardRing {
         return entries[cursor]
     }
 
-    /// Moves the cursor toward older entries (lower index), wrapping from oldest to newest.
+    /// Moves the cursor toward older entries (lower index), clamping at the oldest entry.
     /// First call after a copy does not move — it returns the newest entry (current position).
     func cycleOlder() {
         guard !entries.isEmpty else { return }
         if cyclingActive {
-            cursor = cursor == 0 ? entries.count - 1 : cursor - 1
+            if cursor > 0 { cursor -= 1 }
         } else {
             cyclingActive = true
         }
     }
 
-    /// Moves the cursor toward newer entries (higher index), wrapping from newest to oldest.
+    /// Moves the cursor toward newer entries (higher index), clamping at the newest entry.
     /// First call after a copy does not move — it returns the newest entry (current position).
     func cycleNewer() {
         guard !entries.isEmpty else { return }
         if cyclingActive {
-            cursor = cursor == entries.count - 1 ? 0 : cursor + 1
+            if cursor < entries.count - 1 { cursor += 1 }
         } else {
             cyclingActive = true
         }
