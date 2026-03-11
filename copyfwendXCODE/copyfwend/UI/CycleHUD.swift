@@ -11,7 +11,9 @@ import CoreGraphics
 /// `commitPaste()` on Option release, and `hide()` when cycling is interrupted (clear, disable).
 final class CycleHUD: NSPanel {
 
-    private let label = NSTextField(labelWithString: "")
+    private let label      = NSTextField(labelWithString: "")
+    private let badgeLabel  = NSTextField(labelWithString: "")
+    private var badgePanel: NSPanel!
 
     /// Called on the main thread immediately after a paste is simulated.
     /// Wire this to `ClipboardRing.promoteCurrentToNewest()` via `AppController`.
@@ -43,6 +45,7 @@ final class CycleHUD: NSPanel {
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         setupContent()
+        setupBadge()
     }
 
     private func setupContent() {
@@ -97,17 +100,19 @@ final class CycleHUD: NSPanel {
             ? String(normalized.prefix(charLimit)).appending("…")
             : normalized
 
-        label.stringValue = "\(display)  [\(index) / \(total)]"
+        label.stringValue = display
 
         resizePanel(maxPanelWidth: maxPanelWidth)
         repositionNearCursor()
         if !isVisible { orderFront(nil) }
+        updateBadge(index: index, total: total)
     }
 
     /// Hides the panel without simulating paste.
     ///
     /// Call when history is cleared or the app is disabled mid-cycle.
     func hide() {
+        badgePanel.orderOut(nil)
         orderOut(nil)
     }
 
@@ -184,5 +189,70 @@ final class CycleHUD: NSPanel {
         keyUp.flags   = .maskCommand
         keyDown.post(tap: .cgSessionEventTap)
         keyUp.post(tap: .cgSessionEventTap)
+    }
+
+    // MARK: - Badge panel
+
+    private func setupBadge() {
+        let badgeWindow = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 60, height: 28),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        badgeWindow.level = .floating
+        badgeWindow.isOpaque = false
+        badgeWindow.backgroundColor = .clear
+        badgeWindow.hasShadow = true
+        badgeWindow.isReleasedWhenClosed = false
+        badgeWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        let effect = NSVisualEffectView()
+        effect.material = .popover
+        effect.blendingMode = .behindWindow
+        effect.state = .active
+        effect.wantsLayer = true
+        effect.layer?.cornerRadius = 6
+        effect.layer?.masksToBounds = true
+
+        badgeLabel.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
+        badgeLabel.textColor = .labelColor
+        badgeLabel.isSelectable = false
+        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        effect.addSubview(badgeLabel)
+        NSLayoutConstraint.activate([
+            badgeLabel.topAnchor.constraint(equalTo: effect.topAnchor, constant: 5),
+            badgeLabel.bottomAnchor.constraint(equalTo: effect.bottomAnchor, constant: -5),
+            badgeLabel.leadingAnchor.constraint(equalTo: effect.leadingAnchor, constant: 8),
+            badgeLabel.trailingAnchor.constraint(equalTo: effect.trailingAnchor, constant: -8),
+        ])
+        badgeWindow.contentView = effect
+        badgePanel = badgeWindow
+    }
+
+    /// Sizes and positions the badge panel at the top-right corner of the main panel with 1pt overlap.
+    private func updateBadge(index: Int, total: Int) {
+        badgeLabel.stringValue = "\(index) / \(total)"
+
+        guard let font = badgeLabel.font else { return }
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let textSize = (badgeLabel.stringValue as NSString).size(withAttributes: attrs)
+        let hPad: CGFloat = 8
+        let vPad: CGFloat = 5
+        let badgeWidth  = ceil(textSize.width)  + hPad * 2
+        let badgeHeight = ceil(textSize.height) + vPad * 2
+
+        // Pin badge so its bottom-right overlaps the top-right of the main panel by 1pt.
+        let mainFrame   = self.frame
+        let badgeOrigin = NSPoint(x: mainFrame.maxX - badgeWidth, y: mainFrame.maxY - 1)
+        let badgeFrame  = NSRect(origin: badgeOrigin, size: NSSize(width: badgeWidth, height: badgeHeight))
+
+        if badgePanel.isVisible {
+            badgePanel.setFrame(badgeFrame, display: true)
+        } else {
+            badgePanel.setFrame(badgeFrame, display: false)
+            badgePanel.orderFront(nil)
+        }
     }
 }

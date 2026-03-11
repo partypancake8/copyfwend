@@ -48,6 +48,10 @@ final class AppController: ObservableObject {
             self?.commitPaste()
         }
 
+        hotkey.onCancelCycle = { [weak self] in
+            self?.cancelCycle()
+        }
+
         monitor.start()
 
         // Always attempt enable — CGEvent.tapCreate is what causes macOS to register
@@ -113,6 +117,13 @@ final class AppController: ObservableObject {
 
     func commitPaste() {
         hud.commitPaste()
+    }
+
+    /// Cancels the pending paste and hides the HUD. The clipboard retains the last
+    /// cycled-to entry but no Cmd+V is simulated.
+    func cancelCycle() {
+        hotkey.resetCyclingSession()
+        hud.hide()
     }
 
     // MARK: - History management
