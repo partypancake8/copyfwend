@@ -1,10 +1,10 @@
 # copyfwend
 
-> **v0.1.0** — all 10 stages shipped.
+> **v0.1.0** — all 10 stages shipped, post-release improvements merged.
 
 A native macOS menu bar app that maintains a text-only clipboard history ring and lets you silently cycle the live system clipboard backward and forward with global hotkeys.
 
-A small floating HUD appears near the cursor while you cycle, showing the current entry and its ring position. Release Option and it pastes. No chooser. No palette. No search UI. Just your clipboard history, cycling silently behind the scenes.
+A small floating HUD appears near the cursor while you cycle, showing the current entry and its position in a separate badge panel. Release Option to paste, or press `Option+Q` to cancel. No chooser. No palette. No search UI. Just your clipboard history, cycling silently behind the scenes.
 
 ---
 
@@ -13,7 +13,9 @@ A small floating HUD appears near the cursor while you cycle, showing the curren
 - Monitors your clipboard and records every text entry you copy
 - `Option+W` cycles to an older clipboard entry and writes it to the live system clipboard
 - `Option+S` cycles to a newer clipboard entry and writes it to the live system clipboard
-- Release the Option key and the floating HUD pastes the selected entry via Cmd+V and dismisses
+- Release the Option key → the selected entry is pasted via Cmd+V and the HUD dismisses
+- `Option+Q` during cycling → cancels the paste and hides the HUD (clipboard retains the last cycled entry, nothing is pasted)
+- Cycling clamps at both ends — no wraparound
 - Hotkeys are fully swallowed — they do not pass through to other apps
 - Runs always-on from the menu bar with no Dock presence
 
@@ -21,11 +23,10 @@ A small floating HUD appears near the cursor while you cycle, showing the curren
 
 - Text-only clipboard history
 - In-memory history only — nothing written to disk
-- `Option+W` = cycle older
-- `Option+S` = cycle newer
+- `Option+W` = cycle older, `Option+S` = cycle newer, `Option+Q` = cancel
 - All text entries recorded — no filtering of duplicates, empty strings, or whitespace
 - Pointer resets to newest entry on each new copy
-- Wraparound enabled at both ends of the ring
+- Cycling clamps at both ends — no wraparound
 - Menu bar exposes:
   - Enabled / disabled toggle
   - Launch at login toggle
