@@ -4,7 +4,7 @@
 
 A native macOS menu bar app that maintains a text-only clipboard history ring and lets you silently cycle the live system clipboard backward and forward with global hotkeys.
 
-A small floating HUD appears near the cursor while you cycle, showing the current entry and a countdown until it auto-pastes. No chooser. No palette. No search UI. Just your clipboard history, cycling silently behind the scenes.
+A small floating HUD appears near the cursor while you cycle, showing the current entry and its ring position. Release Option and it pastes. No chooser. No palette. No search UI. Just your clipboard history, cycling silently behind the scenes.
 
 ---
 
@@ -13,7 +13,7 @@ A small floating HUD appears near the cursor while you cycle, showing the curren
 - Monitors your clipboard and records every text entry you copy
 - `Option+W` cycles to an older clipboard entry and writes it to the live system clipboard
 - `Option+S` cycles to a newer clipboard entry and writes it to the live system clipboard
-- After a short idle period a floating HUD auto-pastes the selected entry via Cmd+V and dismisses
+- Release the Option key and the floating HUD pastes the selected entry via Cmd+V and dismisses
 - Hotkeys are fully swallowed — they do not pass through to other apps
 - Runs always-on from the menu bar with no Dock presence
 

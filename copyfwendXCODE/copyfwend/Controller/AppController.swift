@@ -44,6 +44,10 @@ final class AppController: ObservableObject {
             self?.handleTapDisabled()
         }
 
+        hotkey.onOptionReleased = { [weak self] in
+            self?.commitPaste()
+        }
+
         monitor.start()
 
         // Always attempt enable — CGEvent.tapCreate is what causes macOS to register
@@ -107,11 +111,16 @@ final class AppController: ObservableObject {
         showHUD()
     }
 
+    func commitPaste() {
+        hud.commitPaste()
+    }
+
     // MARK: - History management
 
     func clearHistory() {
         ring.clear()
         historyCount = ring.count
+        hotkey.resetCyclingSession()
         hud.hide()
     }
 
@@ -125,6 +134,7 @@ final class AppController: ObservableObject {
         } else {
             monitor.stop()
             hotkey.disable()
+            hotkey.resetCyclingSession()
             hud.hide()
         }
     }
