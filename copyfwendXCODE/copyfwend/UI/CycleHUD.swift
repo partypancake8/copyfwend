@@ -19,13 +19,15 @@ final class CycleHUD: NSPanel {
     /// Wire this to `ClipboardRing.promoteCurrentToNewest()` via `AppController`.
     var onPaste: (() -> Void)?
 
-    private static let hPad:             CGFloat      = 12
+    private static let hPad:             CGFloat      = 14
     private static let vPad:             CGFloat      = 10
     private static let minWidth:         CGFloat      = 120
     private static let maxWidthFraction: CGFloat      = 0.40  // fraction of the current screen width
     private static let absoluteMaxWidth: CGFloat      = 620
     private static let maxLines:         Int          = 5
     private static let fontSize:         CGFloat      = 13
+    private static let badgeFontSize:    CGFloat      = 11
+    private static let cornerRadius:     CGFloat      = 12
     /// Cursor offset so the HUD appears above and to the right of the pointer.
     private static let cursorOffset:     NSPoint      = NSPoint(x: 16, y: 20)
 
@@ -50,15 +52,17 @@ final class CycleHUD: NSPanel {
 
     private func setupContent() {
         let effect = NSVisualEffectView()
-        effect.material = .popover
+        effect.material = .hudWindow
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
-        effect.layer?.cornerRadius = 8
+        effect.layer?.cornerRadius = Self.cornerRadius
         effect.layer?.masksToBounds = true
+        effect.layer?.borderWidth = 0.5
+        effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
         label.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
-        label.textColor = .labelColor
+        label.textColor = .white
         label.lineBreakMode = .byWordWrapping
         label.maximumNumberOfLines = Self.maxLines
         label.isSelectable = false
@@ -208,15 +212,17 @@ final class CycleHUD: NSPanel {
         badgeWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         let effect = NSVisualEffectView()
-        effect.material = .popover
+        effect.material = .hudWindow
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
-        effect.layer?.cornerRadius = 6
+        effect.layer?.cornerRadius = 8
         effect.layer?.masksToBounds = true
+        effect.layer?.borderWidth = 0.5
+        effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
-        badgeLabel.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
-        badgeLabel.textColor = .labelColor
+        badgeLabel.font = .monospacedSystemFont(ofSize: Self.badgeFontSize, weight: .medium)
+        badgeLabel.textColor = NSColor.white.withAlphaComponent(0.70)
         badgeLabel.isSelectable = false
         badgeLabel.translatesAutoresizingMaskIntoConstraints = false
 
