@@ -120,6 +120,11 @@ final class AppController: ObservableObject {
     }
 
     func commitPaste() {
+        // Guard: only paste if the HUD is actually visible. If the user pressed
+        // Option+E (or Clear History) during a cycling session, clearHistory() hides
+        // the HUD before this callback fires. Without this guard, releasing Option
+        // after an erase would silently paste the last cycled-to clipboard entry.
+        guard hud.isVisible else { return }
         hud.commitPaste()
     }
 
