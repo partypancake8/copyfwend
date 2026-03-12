@@ -52,6 +52,10 @@ final class AppController: ObservableObject {
             self?.cancelCycle()
         }
 
+        hotkey.onEraseHistory = { [weak self] in
+            self?.clearHistory()
+        }
+
         monitor.start()
 
         // Always attempt enable — CGEvent.tapCreate is what causes macOS to register

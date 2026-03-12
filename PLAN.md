@@ -61,6 +61,8 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 - Listen for `.keyDown` events
 - Match `Option+W`: flags contain `.maskAlternate`, keyCode == 13
 - Match `Option+S`: flags contain `.maskAlternate`, keyCode == 1
+- Match `Option+Q`: flags contain `.maskAlternate`, keyCode == 12 (cancel cycle, only during active cycling session)
+- Match `Option+E`: flags contain `.maskAlternate`, keyCode == 14 (erase all history, always active)
 - On match: invoke callback, return `nil` from tap callback (swallows event)
 - On non-match: return event unmodified
 - Handle `CGEvent.tapDisabledByUserInput` and `CGEvent.tapDisabledByTimeout` to surface Accessibility loss
@@ -262,19 +264,19 @@ User clicks Enabled toggle in menu
 
 ## Staged Roadmap
 
-| Stage | Name                     | Description                                                    | Tests                      |
-| ----- | ------------------------ | -------------------------------------------------------------- | -------------------------- |
-| 0     | Docs                     | README.md, PLAN.md, .gitignore                                 | —                          |
-| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit            | —                          |
-| 2     | ClipboardRing            | Pure ring logic                                                | Full unit tests            |
-| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                      | Manual                     |
-| 4     | HotkeyEngine             | CGEventTap, key match, swallow                                 | Manual                     |
-| 5     | AppController            | Full coordinator wiring all services                           | Unit tests for state logic |
+| Stage | Name                     | Description                                                             | Tests                      |
+| ----- | ------------------------ | ----------------------------------------------------------------------- | -------------------------- |
+| 0     | Docs                     | README.md, PLAN.md, .gitignore                                          | —                          |
+| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit                     | —                          |
+| 2     | ClipboardRing            | Pure ring logic                                                         | Full unit tests            |
+| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                               | Manual                     |
+| 4     | HotkeyEngine             | CGEventTap, key match, swallow                                          | Manual                     |
+| 5     | AppController            | Full coordinator wiring all services                                    | Unit tests for state logic |
 | 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, paste on Option release | Manual                     |
-| 7     | MenuBarView              | All required menu items, live state                            | Manual                     |
-| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                              | Manual                     |
-| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface                 | Manual                     |
-| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                          | Manual + all tests green   |
+| 7     | MenuBarView              | All required menu items, live state                                     | Manual                     |
+| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                                       | Manual                     |
+| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface                          | Manual                     |
+| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                                   | Manual + all tests green   |
 
 Each stage must compile cleanly and pass all existing tests before the next stage begins.
 
@@ -480,7 +482,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 
 | Risk                                                                             | Severity | Mitigation                                                                              |
 | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `copyfwendXCODE/.git` conflicts with parent repo's git tracking                 | High     | Remove before Stage 1; see setup instructions                                           |
+| `copyfwendXCODE/.git` conflicts with parent repo's git tracking                  | High     | Remove before Stage 1; see setup instructions                                           |
 | `CGEventTap` silently fails without Accessibility                                | High     | Always check `AXIsProcessTrusted()` before enabling; surface in menu                    |
 | `CGEventTap` disabled mid-session on Accessibility revocation                    | Medium   | Handle `tapDisabledByUserInput/Timeout` event type; update menu state                   |
 | NSPasteboard polling delay (~0.5s) causes missed first copy after disable→enable | Low      | Acceptable for V1; document as known behavior                                           |
@@ -516,16 +518,16 @@ A stage is done when all of the following are true:
 
 **Stage 10 complete. All stages shipped. Tagged `v0.1.0`.**
 
-| Stage | Status |
-| ----- | ------ |
-| 0 — Docs | ✅ |
-| 1 — Scaffold | ✅ |
-| 2 — ClipboardRing | ✅ 31 unit tests passing |
-| 3 — ClipboardMonitor | ✅ |
-| 4 — HotkeyEngine | ✅ |
-| 5 — AppController | ✅ |
-| 6 — CycleHUD | ✅ |
-| 7 — MenuBarView | ✅ |
-| 8 — LaunchAtLoginManager | ✅ |
-| 9 — Accessibility Handling | ✅ |
-| 10 — Integration & Acceptance | ✅ |
+| Stage                         | Status                   |
+| ----------------------------- | ------------------------ |
+| 0 — Docs                      | ✅                       |
+| 1 — Scaffold                  | ✅                       |
+| 2 — ClipboardRing             | ✅ 31 unit tests passing |
+| 3 — ClipboardMonitor          | ✅                       |
+| 4 — HotkeyEngine              | ✅                       |
+| 5 — AppController             | ✅                       |
+| 6 — CycleHUD                  | ✅                       |
+| 7 — MenuBarView               | ✅                       |
+| 8 — LaunchAtLoginManager      | ✅                       |
+| 9 — Accessibility Handling    | ✅                       |
+| 10 — Integration & Acceptance | ✅                       |
