@@ -384,17 +384,20 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 ### Stage 6 — CycleHUD ✅
 
 - `UI/CycleHUD.swift` — `NSPanel` subclass, `.borderless + .nonactivatingPanel`, `NSWindowLevel.floating`
-- `NSVisualEffectView` content with `.popover` material (frosted glass, adaptive light/dark), 8pt corner radius
-- Main label: 13pt monospaced, `.labelColor`, word-wrap up to 5 lines
-- Displays: normalized entry text (real newlines preserved) + `[N / Total]` where 1 = most recent
-- Dynamic sizing: width shrinks to content or expands to `min(620pt, 40% screen width)`; height measured via `boundingRect` per wrapped content; char cap computed from font metrics × maxLines × screen width
-- Position: `NSEvent.mouseLocation + (16, 20)` offset, clamped to visible screen frame
+- `NSVisualEffectView` content with `.menu` material (macOS menu translucency, adaptive), 12pt corner radius, 0.5pt white border at 12% opacity
+- Counter label: 11pt medium monospaced, `NSColor.controlAccentColor` — picks up user's system accent from System Settings
+- Body label: 13pt SF system font (`.systemFont`), `.white`, word-wrap up to 5 lines
+- Layout: counter top-left above body text, both inside single panel (badge panel removed)
+- Dynamic sizing: width shrinks to content or expands to `min(620pt, 40% screen width)`; height = vPad + counter height + gap + body height + vPad
+- Position: `NSEvent.mouseLocation + (16, -28)` — appears below-right of cursor, clamped to visible screen frame
 - **Paste on Option release**: no auto-dismiss timer; HUD stays visible until `commitPaste()` is called
+- Fade in: 100ms opacity transition on first show; fade out: 80ms on hide (panel alpha 0.92 max)
 - `commitPaste()` → `pasteAndHide()` → simulate Cmd+V, fire `onPaste` callback, hide panel
-- `onPaste` callback → `AppController` → `ring.promoteCurrentToNewest()` — moves pasted entry to newest ring position so clipboard state and ring order agree
-- `hide()` orders panel out without pasting
-- `ClipboardRing.currentIndex: Int?` added to expose cursor position for `[N / Total]` display
+- `onPaste` callback → `AppController` → `ring.promoteCurrentToNewest()`
+- `hide()` guards `isVisible`; fades then orders out
+- `ClipboardRing.currentIndex: Int?` added to expose cursor position for counter display
 - `ClipboardRing.promoteCurrentToNewest()` added; 5 new unit tests; total 31 tests passing
+- `CycleHUD+Preview.swift` — three `#Preview` Canvas variants (`#if DEBUG` only)
 - **Done when:** HUD appears near cursor on first W/S, updates each press, pastes + disappears on Option release
 
 ### Stage 7 — MenuBarView
@@ -548,3 +551,5 @@ A stage is done when all of the following are true:
 | `[feat]` | **Option+E — erase all history** — new global hotkey (keyCode 14); fires at any time (cycling or not); resets `isCycling`; wired to `AppController.clearHistory()`.                                                                                                |
 | `[fix]`  | **Disable App Sandbox** — `ENABLE_APP_SANDBOX = YES` was silently blocking all `CGEventTap` creation; NSPasteboard monitoring still worked inside the sandbox but hotkeys didn't. Set `ENABLE_APP_SANDBOX = NO` in both Debug and Release.                         |
 | `[fix]`  | **Prevent silent paste after erase** — `AppController.commitPaste()` now guards on `hud.isVisible`; if the HUD is hidden (e.g. cleared by Option+E mid-cycle), releasing Option is a no-op and no Cmd+V is simulated.                                              |
+| `[ui]`   | **HUD restyled** — `.menu` material (macOS menu translucency); `NSColor.controlAccentColor` counter (user's system accent); SF system font on body text; 12pt corner radius; 0.5pt white border; no panel shadow; counter inline top-left above body text; HUD appears below-right of cursor; 100ms fade-in / 80ms fade-out; badge panel removed (single panel). |
+| `[dev]`  | **Xcode Canvas previews** — `CycleHUD+Preview.swift` with three `#Preview` variants (short/medium/multi-line); `#if DEBUG` only; auto-refreshes on save without a build-run cycle.                                                                                 |

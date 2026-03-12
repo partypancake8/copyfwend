@@ -12,22 +12,27 @@ import CoreGraphics
 final class CycleHUD: NSPanel {
 
     private let label      = NSTextField(labelWithString: "")
-    private let badgeLabel  = NSTextField(labelWithString: "")
-    private var badgePanel: NSPanel!
+    private let badgeLabel = NSTextField(labelWithString: "")
 
     /// Called on the main thread immediately after a paste is simulated.
     /// Wire this to `ClipboardRing.promoteCurrentToNewest()` via `AppController`.
     var onPaste: (() -> Void)?
 
-    private static let hPad:             CGFloat      = 12
+    private static let hPad:             CGFloat      = 14
     private static let vPad:             CGFloat      = 10
+    private static let badgeTopGap:      CGFloat      = 4
     private static let minWidth:         CGFloat      = 120
     private static let maxWidthFraction: CGFloat      = 0.40  // fraction of the current screen width
     private static let absoluteMaxWidth: CGFloat      = 620
     private static let maxLines:         Int          = 5
     private static let fontSize:         CGFloat      = 13
-    /// Cursor offset so the HUD appears above and to the right of the pointer.
-    private static let cursorOffset:     NSPoint      = NSPoint(x: 16, y: 20)
+    private static let badgeFontSize:    CGFloat      = 11
+    private static let cornerRadius:     CGFloat      = 12
+    private static let panelAlpha:       CGFloat      = 0.92
+    private static let fadeIn:           TimeInterval = 0.10
+    private static let fadeOut:          TimeInterval = 0.08
+    /// Cursor offset so the HUD appears below and to the right of the pointer.
+    private static let cursorOffset:     NSPoint      = NSPoint(x: 16, y: -28)
 
     // MARK: - Init
 
@@ -41,35 +46,48 @@ final class CycleHUD: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        alphaValue = 0
         setupContent()
-        setupBadge()
     }
 
     private func setupContent() {
         let effect = NSVisualEffectView()
-        effect.material = .popover
+        effect.material = .menu
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
-        effect.layer?.cornerRadius = 8
+        effect.layer?.cornerRadius = Self.cornerRadius
         effect.layer?.masksToBounds = true
+        effect.layer?.borderWidth = 0.5
+        effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
-        label.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
-        label.textColor = .labelColor
+        label.font = .systemFont(ofSize: Self.fontSize, weight: .regular)
+        label.textColor = .white
         label.lineBreakMode = .byWordWrapping
         label.maximumNumberOfLines = Self.maxLines
         label.isSelectable = false
         label.translatesAutoresizingMaskIntoConstraints = false
 
+        badgeLabel.font = .monospacedSystemFont(ofSize: Self.badgeFontSize, weight: .medium)
+        badgeLabel.textColor = NSColor.controlAccentColor
+        badgeLabel.alignment = .left
+        badgeLabel.isSelectable = false
+        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        effect.addSubview(badgeLabel)
         effect.addSubview(label)
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: effect.topAnchor, constant: Self.vPad),
-            label.bottomAnchor.constraint(equalTo: effect.bottomAnchor, constant: -Self.vPad),
+            badgeLabel.topAnchor.constraint(equalTo: effect.topAnchor, constant: Self.vPad),
+            badgeLabel.leadingAnchor.constraint(equalTo: effect.leadingAnchor, constant: Self.hPad),
+            badgeLabel.trailingAnchor.constraint(equalTo: effect.trailingAnchor, constant: -Self.hPad),
+
+            label.topAnchor.constraint(equalTo: badgeLabel.bottomAnchor, constant: Self.badgeTopGap),
             label.leadingAnchor.constraint(equalTo: effect.leadingAnchor, constant: Self.hPad),
             label.trailingAnchor.constraint(equalTo: effect.trailingAnchor, constant: -Self.hPad),
+            label.bottomAnchor.constraint(equalTo: effect.bottomAnchor, constant: -Self.vPad),
         ])
 
         contentView = effect
@@ -101,19 +119,32 @@ final class CycleHUD: NSPanel {
             : normalized
 
         label.stringValue = display
+        badgeLabel.stringValue = "\(index) / \(total)"
 
         resizePanel(maxPanelWidth: maxPanelWidth)
         repositionNearCursor()
-        if !isVisible { orderFront(nil) }
-        updateBadge(index: index, total: total)
+
+        if !isVisible {
+            alphaValue = 0
+            orderFront(nil)
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = Self.fadeIn
+                self.animator().alphaValue = Self.panelAlpha
+            }
+        }
     }
 
     /// Hides the panel without simulating paste.
     ///
     /// Call when history is cleared or the app is disabled mid-cycle.
     func hide() {
-        badgePanel.orderOut(nil)
-        orderOut(nil)
+        guard isVisible else { return }
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = Self.fadeOut
+            self.animator().alphaValue = 0
+        }) { [weak self] in
+            self?.orderOut(nil)
+        }
     }
 
     /// Triggers paste and hides the HUD. Call when the user releases the Option modifier key.
@@ -135,7 +166,7 @@ final class CycleHUD: NSPanel {
     /// Short text → panel shrinks to content width (single line).
     /// Long text → panel uses maxPanelWidth and grows vertically up to maxLines.
     private func resizePanel(maxPanelWidth: CGFloat) {
-        guard let font = label.font else { return }
+        guard let font = label.font, let badgeFont = badgeLabel.font else { return }
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let containerWidth = maxPanelWidth - Self.hPad * 2
 
@@ -149,7 +180,8 @@ final class CycleHUD: NSPanel {
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             attributes: attrs
         )
-        let panelHeight = ceil(measuredRect.height) + Self.vPad * 2
+        let badgeHeight = ceil(("0" as NSString).size(withAttributes: [.font: badgeFont]).height)
+        let panelHeight = Self.vPad + badgeHeight + Self.badgeTopGap + ceil(measuredRect.height) + Self.vPad
         setContentSize(NSSize(width: panelWidth, height: panelHeight))
     }
 
@@ -161,6 +193,7 @@ final class CycleHUD: NSPanel {
         )
 
         // Clamp to the screen that contains the cursor so the panel is always fully visible
+        // Negative Y offset places the HUD below the cursor; subtract panel height to anchor top edge.
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
         if let screen {
             let frame = screen.visibleFrame
@@ -191,68 +224,5 @@ final class CycleHUD: NSPanel {
         keyUp.post(tap: .cgSessionEventTap)
     }
 
-    // MARK: - Badge panel
-
-    private func setupBadge() {
-        let badgeWindow = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 60, height: 28),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        badgeWindow.level = .floating
-        badgeWindow.isOpaque = false
-        badgeWindow.backgroundColor = .clear
-        badgeWindow.hasShadow = true
-        badgeWindow.isReleasedWhenClosed = false
-        badgeWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-
-        let effect = NSVisualEffectView()
-        effect.material = .popover
-        effect.blendingMode = .behindWindow
-        effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = 6
-        effect.layer?.masksToBounds = true
-
-        badgeLabel.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
-        badgeLabel.textColor = .labelColor
-        badgeLabel.isSelectable = false
-        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        effect.addSubview(badgeLabel)
-        NSLayoutConstraint.activate([
-            badgeLabel.topAnchor.constraint(equalTo: effect.topAnchor, constant: 5),
-            badgeLabel.bottomAnchor.constraint(equalTo: effect.bottomAnchor, constant: -5),
-            badgeLabel.leadingAnchor.constraint(equalTo: effect.leadingAnchor, constant: 8),
-            badgeLabel.trailingAnchor.constraint(equalTo: effect.trailingAnchor, constant: -8),
-        ])
-        badgeWindow.contentView = effect
-        badgePanel = badgeWindow
-    }
-
-    /// Sizes and positions the badge panel at the top-right corner of the main panel with 1pt overlap.
-    private func updateBadge(index: Int, total: Int) {
-        badgeLabel.stringValue = "\(index) / \(total)"
-
-        guard let font = badgeLabel.font else { return }
-        let attrs: [NSAttributedString.Key: Any] = [.font: font]
-        let textSize = (badgeLabel.stringValue as NSString).size(withAttributes: attrs)
-        let hPad: CGFloat = 8
-        let vPad: CGFloat = 5
-        let badgeWidth  = ceil(textSize.width)  + hPad * 2
-        let badgeHeight = ceil(textSize.height) + vPad * 2
-
-        // Pin badge so its bottom-left overlaps the top-left of the main panel by 1pt.
-        let mainFrame   = self.frame
-        let badgeOrigin = NSPoint(x: mainFrame.minX, y: mainFrame.maxY - 1)
-        let badgeFrame  = NSRect(origin: badgeOrigin, size: NSSize(width: badgeWidth, height: badgeHeight))
-
-        if badgePanel.isVisible {
-            badgePanel.setFrame(badgeFrame, display: true)
-        } else {
-            badgePanel.setFrame(badgeFrame, display: false)
-            badgePanel.orderFront(nil)
-        }
-    }
 }
+
