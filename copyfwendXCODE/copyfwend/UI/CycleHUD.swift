@@ -243,9 +243,9 @@ final class CycleHUD: NSPanel {
         let badgeWidth  = ceil(textSize.width)  + hPad * 2
         let badgeHeight = ceil(textSize.height) + vPad * 2
 
-        // Pin badge so its bottom-right overlaps the top-right of the main panel by 1pt.
+        // Pin badge so its bottom-left overlaps the top-left of the main panel by 1pt.
         let mainFrame   = self.frame
-        let badgeOrigin = NSPoint(x: mainFrame.maxX - badgeWidth, y: mainFrame.maxY - 1)
+        let badgeOrigin = NSPoint(x: mainFrame.minX, y: mainFrame.maxY - 1)
         let badgeFrame  = NSRect(origin: badgeOrigin, size: NSSize(width: badgeWidth, height: badgeHeight))
 
         if badgePanel.isVisible {
