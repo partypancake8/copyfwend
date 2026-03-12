@@ -542,9 +542,9 @@ A stage is done when all of the following are true:
 
 ### Post-v0.1.0 Changes
 
-| Commit | Description |
-| ------ | ----------- |
+| Commit   | Description                                                                                                                                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `[feat]` | **Paste on Option release** — removed auto-dismiss timer from CycleHUD; paste fires when user releases the Option modifier key. `HotkeyEngine` gained `.flagsChanged` monitoring and `onOptionReleased` callback; `AppController` wires it to `hud.commitPaste()`. |
-| `[feat]` | **Option+E — erase all history** — new global hotkey (keyCode 14); fires at any time (cycling or not); resets `isCycling`; wired to `AppController.clearHistory()`. |
-| `[fix]` | **Disable App Sandbox** — `ENABLE_APP_SANDBOX = YES` was silently blocking all `CGEventTap` creation; NSPasteboard monitoring still worked inside the sandbox but hotkeys didn't. Set `ENABLE_APP_SANDBOX = NO` in both Debug and Release. |
-| `[fix]` | **Prevent silent paste after erase** — `AppController.commitPaste()` now guards on `hud.isVisible`; if the HUD is hidden (e.g. cleared by Option+E mid-cycle), releasing Option is a no-op and no Cmd+V is simulated. |
+| `[feat]` | **Option+E — erase all history** — new global hotkey (keyCode 14); fires at any time (cycling or not); resets `isCycling`; wired to `AppController.clearHistory()`.                                                                                                |
+| `[fix]`  | **Disable App Sandbox** — `ENABLE_APP_SANDBOX = YES` was silently blocking all `CGEventTap` creation; NSPasteboard monitoring still worked inside the sandbox but hotkeys didn't. Set `ENABLE_APP_SANDBOX = NO` in both Debug and Release.                         |
+| `[fix]`  | **Prevent silent paste after erase** — `AppController.commitPaste()` now guards on `hud.isVisible`; if the HUD is hidden (e.g. cleared by Option+E mid-cycle), releasing Option is a no-op and no Cmd+V is simulated.                                              |
