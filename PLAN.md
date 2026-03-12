@@ -12,26 +12,30 @@ The goal is a minimal, well-engineered tool that does one thing correctly, stays
 
 These decisions are fixed for V1 and must not be changed without an explicit spec update.
 
-| Decision           | Value                                              |
-| ------------------ | -------------------------------------------------- |
-| Clipboard content  | Text only                                          |
-| Storage            | In-memory only; nothing written to disk            |
-| Cycle older hotkey | `Option+W` (keyCode 13, maskAlternate)             |
-| Cycle newer hotkey | `Option+S` (keyCode 1, maskAlternate)              |
-| Hotkey handling    | Fully swallowed — not passed through               |
-| Filtering          | None — all text entries recorded                   |
-| Duplicates         | Recorded as-is                                     |
-| Empty strings      | Recorded as-is                                     |
-| Whitespace-only    | Recorded as-is                                     |
-| Pointer reset      | Resets to newest entry on every new copy           |
-| Wraparound         | Enabled at both ends                               |
-| Auto-paste         | Yes — Cmd+V simulated after each cycle             |
-| Persistence        | Not in V1                                          |
-| Launch at login    | Included via `SMAppService` (macOS 13+)            |
-| Accessibility      | Required; must be surfaced in menu if not granted  |
-| Minimum OS         | macOS 13.0 (Ventura)                               |
-| Build tooling      | Xcode only                                         |
-| App type           | Menu bar agent — `LSUIElement = YES`, no Dock icon |
+| Decision           | Value                                                                           |
+| ------------------ | ------------------------------------------------------------------------------- |
+| Clipboard content  | Text only                                                                       |
+| Storage            | In-memory only; nothing written to disk                                         |
+| Cycle older hotkey | `Option+W` (keyCode 13, maskAlternate)                                          |
+| Cycle newer hotkey | `Option+S` (keyCode 1, maskAlternate)                                           |
+| Cancel hotkey      | `Option+Q` (keyCode 12, maskAlternate) — cancel paste, active only during cycle |
+| Erase hotkey       | `Option+E` (keyCode 14, maskAlternate) — clear all history, always active       |
+| Paste trigger      | Option key release (not auto-timer) — HUD stays visible until release           |
+| Hotkey handling    | Fully swallowed — not passed through                                            |
+| Filtering          | None — all text entries recorded                                                |
+| Duplicates         | Recorded as-is                                                                  |
+| Empty strings      | Recorded as-is                                                                  |
+| Whitespace-only    | Recorded as-is                                                                  |
+| Pointer reset      | Resets to newest entry on every new copy                                        |
+| Wraparound         | Enabled at both ends                                                            |
+| Auto-paste         | Yes — Cmd+V simulated on Option release                                         |
+| App Sandbox        | Disabled — `ENABLE_APP_SANDBOX = NO` (CGEventTap requires non-sandboxed)        |
+| Persistence        | Not in V1                                                                       |
+| Launch at login    | Included via `SMAppService` (macOS 13+)                                         |
+| Accessibility      | Required; must be surfaced in menu if not granted                               |
+| Minimum OS         | macOS 13.0 (Ventura)                                                            |
+| Build tooling      | Xcode only                                                                      |
+| App type           | Menu bar agent — `LSUIElement = YES`, no Dock icon                              |
 
 ---
 
@@ -58,12 +62,15 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 ### Global Hotkeys
 
 - `CGEventTap` on `.cgSessionEventTap` at `.headInsertEventTap` position
-- Listen for `.keyDown` events
+- Listen for `.keyDown` and `.flagsChanged` events
 - Match `Option+W`: flags contain `.maskAlternate`, keyCode == 13
 - Match `Option+S`: flags contain `.maskAlternate`, keyCode == 1
+- Match `Option+Q`: flags contain `.maskAlternate`, keyCode == 12 (cancel cycle, only during active cycling session)
+- Match `Option+E`: flags contain `.maskAlternate`, keyCode == 14 (erase all history, always active regardless of cycling state)
 - On match: invoke callback, return `nil` from tap callback (swallows event)
 - On non-match: return event unmodified
 - Handle `CGEvent.tapDisabledByUserInput` and `CGEvent.tapDisabledByTimeout` to surface Accessibility loss
+- `isCycling` flag: set `true` on W/S press, set `false` on Q press, E press, or Option release; `resetCyclingSession()` clears it without firing the release callback
 
 ### Cycling Behavior
 
@@ -73,6 +80,9 @@ These decisions are fixed for V1 and must not be changed without an explicit spe
 - Simulate paste: post CGEvent Cmd+V (keyCode 9, `.maskCommand`) to `.cgSessionEventTap`
 - Rapid W/S cycles update the clipboard each press; only the final resting entry (selected when Option is released) gets pasted
 - If ring is empty: hotkey is swallowed, clipboard unchanged, no paste
+- `Option+Q` during a session: cancel cycle, hide HUD, no paste
+- `Option+E` at any time: erase all history, reset cycling state, hide HUD; **no paste fires even if Option is held and released afterward**
+- `commitPaste()` guards on HUD visibility: if the HUD is not visible (hidden by erase or cancel), releasing Option is a no-op — no silent paste
 
 ### Menu Bar UI
 
@@ -188,7 +198,7 @@ Data flows in one direction: platform events → AppController → ClipboardRing
 - Shows position indicator: e.g. `[2 / 5]`
 - Paste fires when `commitPaste()` is called (triggered by `AppController` on Option key release)
 - `show(text:index:total:)` — updates content, repositions near cursor
-- `commitPaste()` — simulates Cmd+V paste, fires `onPaste`, hides panel
+- `commitPaste()` — **guards on `isVisible`**; if panel is hidden (e.g. after erase or cancel), returns immediately without pasting; otherwise simulates Cmd+V paste, fires `onPaste`, hides panel
 - `hide()` — orders panel out without pasting
 - Owned by `AppController`; called from `cycleOlder()` / `cycleNewer()` / `commitPaste()`
 
@@ -262,19 +272,19 @@ User clicks Enabled toggle in menu
 
 ## Staged Roadmap
 
-| Stage | Name                     | Description                                                    | Tests                      |
-| ----- | ------------------------ | -------------------------------------------------------------- | -------------------------- |
-| 0     | Docs                     | README.md, PLAN.md, .gitignore                                 | —                          |
-| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit            | —                          |
-| 2     | ClipboardRing            | Pure ring logic                                                | Full unit tests            |
-| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                      | Manual                     |
-| 4     | HotkeyEngine             | CGEventTap, key match, swallow                                 | Manual                     |
-| 5     | AppController            | Full coordinator wiring all services                           | Unit tests for state logic |
+| Stage | Name                     | Description                                                             | Tests                      |
+| ----- | ------------------------ | ----------------------------------------------------------------------- | -------------------------- |
+| 0     | Docs                     | README.md, PLAN.md, .gitignore                                          | —                          |
+| 1     | Scaffold                 | Menu bar app shell, LSUIElement, MenuBarExtra, Quit                     | —                          |
+| 2     | ClipboardRing            | Pure ring logic                                                         | Full unit tests            |
+| 3     | ClipboardMonitor         | NSPasteboard polling, onNewEntry callback                               | Manual                     |
+| 4     | HotkeyEngine             | CGEventTap, key match, swallow                                          | Manual                     |
+| 5     | AppController            | Full coordinator wiring all services                                    | Unit tests for state logic |
 | 6     | CycleHUD                 | Floating near-cursor panel, snippet + position, paste on Option release | Manual                     |
-| 7     | MenuBarView              | All required menu items, live state                            | Manual                     |
-| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                              | Manual                     |
-| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface                 | Manual                     |
-| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                          | Manual + all tests green   |
+| 7     | MenuBarView              | All required menu items, live state                                     | Manual                     |
+| 8     | LaunchAtLoginManager     | SMAppService wired to menu toggle                                       | Manual                     |
+| 9     | Accessibility Handling   | AXIsProcessTrusted, tap-disabled, menu surface                          | Manual                     |
+| 10    | Integration & Acceptance | End-to-end manual, edge cases, polish                                   | Manual + all tests green   |
 
 Each stage must compile cleanly and pass all existing tests before the next stage begins.
 
@@ -480,7 +490,7 @@ Each stage must compile cleanly and pass all existing tests before the next stag
 
 | Risk                                                                             | Severity | Mitigation                                                                              |
 | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `copyfwendXCODE/.git` conflicts with parent repo's git tracking                 | High     | Remove before Stage 1; see setup instructions                                           |
+| `copyfwendXCODE/.git` conflicts with parent repo's git tracking                  | High     | Remove before Stage 1; see setup instructions                                           |
 | `CGEventTap` silently fails without Accessibility                                | High     | Always check `AXIsProcessTrusted()` before enabling; surface in menu                    |
 | `CGEventTap` disabled mid-session on Accessibility revocation                    | Medium   | Handle `tapDisabledByUserInput/Timeout` event type; update menu state                   |
 | NSPasteboard polling delay (~0.5s) causes missed first copy after disable→enable | Low      | Acceptable for V1; document as known behavior                                           |
@@ -514,18 +524,27 @@ A stage is done when all of the following are true:
 
 ## Current Status
 
-**Stage 10 complete. All stages shipped. Tagged `v0.1.0`.**
+**Stage 10 complete. All stages shipped. Tagged `v0.1.0`. Post-release improvements merged.**
 
-| Stage | Status |
-| ----- | ------ |
-| 0 — Docs | ✅ |
-| 1 — Scaffold | ✅ |
-| 2 — ClipboardRing | ✅ 31 unit tests passing |
-| 3 — ClipboardMonitor | ✅ |
-| 4 — HotkeyEngine | ✅ |
-| 5 — AppController | ✅ |
-| 6 — CycleHUD | ✅ |
-| 7 — MenuBarView | ✅ |
-| 8 — LaunchAtLoginManager | ✅ |
-| 9 — Accessibility Handling | ✅ |
-| 10 — Integration & Acceptance | ✅ |
+| Stage                         | Status                   |
+| ----------------------------- | ------------------------ |
+| 0 — Docs                      | ✅                       |
+| 1 — Scaffold                  | ✅                       |
+| 2 — ClipboardRing             | ✅ 31 unit tests passing |
+| 3 — ClipboardMonitor          | ✅                       |
+| 4 — HotkeyEngine              | ✅                       |
+| 5 — AppController             | ✅                       |
+| 6 — CycleHUD                  | ✅                       |
+| 7 — MenuBarView               | ✅                       |
+| 8 — LaunchAtLoginManager      | ✅                       |
+| 9 — Accessibility Handling    | ✅                       |
+| 10 — Integration & Acceptance | ✅                       |
+
+### Post-v0.1.0 Changes
+
+| Commit   | Description                                                                                                                                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `[feat]` | **Paste on Option release** — removed auto-dismiss timer from CycleHUD; paste fires when user releases the Option modifier key. `HotkeyEngine` gained `.flagsChanged` monitoring and `onOptionReleased` callback; `AppController` wires it to `hud.commitPaste()`. |
+| `[feat]` | **Option+E — erase all history** — new global hotkey (keyCode 14); fires at any time (cycling or not); resets `isCycling`; wired to `AppController.clearHistory()`.                                                                                                |
+| `[fix]`  | **Disable App Sandbox** — `ENABLE_APP_SANDBOX = YES` was silently blocking all `CGEventTap` creation; NSPasteboard monitoring still worked inside the sandbox but hotkeys didn't. Set `ENABLE_APP_SANDBOX = NO` in both Debug and Release.                         |
+| `[fix]`  | **Prevent silent paste after erase** — `AppController.commitPaste()` now guards on `hud.isVisible`; if the HUD is hidden (e.g. cleared by Option+E mid-cycle), releasing Option is a no-op and no Cmd+V is simulated.                                              |

@@ -1,7 +1,8 @@
 import CoreGraphics
 import AppKit
 
-/// Intercepts and swallows Option+W (cycle older) and Option+S (cycle newer) globally
+/// Intercepts and swallows Option+W (cycle older), Option+S (cycle newer),
+/// Option+Q (cancel cycle), and Option+E (erase history) globally
 /// using a CGEventTap at the session level.
 ///
 /// Requires Accessibility permission. Call `enable()` only after `AXIsProcessTrusted()` returns true.
@@ -17,6 +18,8 @@ final class HotkeyEngine {
     /// Fired on the main thread when the user presses Option+Q during a cycling session.
     /// Use this to cancel the pending paste and hide the HUD without pasting.
     var onCancelCycle: (() -> Void)?
+    /// Fired on the main thread when the user presses Option+E to erase all history.
+    var onEraseHistory: (() -> Void)?
 
     /// Tracks whether the user pressed Option+W or Option+S since the last release.
     fileprivate var isCycling: Bool = false
@@ -34,6 +37,7 @@ final class HotkeyEngine {
     fileprivate static let keyCodeW: CGKeyCode = 13
     fileprivate static let keyCodeS: CGKeyCode = 1
     fileprivate static let keyCodeQ: CGKeyCode = 12
+    fileprivate static let keyCodeE: CGKeyCode = 14
 
     func enable() {
         guard eventTap == nil else { return }
@@ -116,6 +120,11 @@ private func hotkeyEventTapCallback(
             // Option+Q during a cycling session — cancel paste, do not step ring.
             engine.isCycling = false
             DispatchQueue.main.async { engine.onCancelCycle?() }
+            return nil  // swallowed
+        case HotkeyEngine.keyCodeE:
+            // Option+E — erase all history. Works at any time (cycling or not).
+            engine.isCycling = false
+            DispatchQueue.main.async { engine.onEraseHistory?() }
             return nil  // swallowed
         default:
             return Unmanaged.passRetained(event)

@@ -52,6 +52,10 @@ final class AppController: ObservableObject {
             self?.cancelCycle()
         }
 
+        hotkey.onEraseHistory = { [weak self] in
+            self?.clearHistory()
+        }
+
         monitor.start()
 
         // Always attempt enable — CGEvent.tapCreate is what causes macOS to register
@@ -116,6 +120,11 @@ final class AppController: ObservableObject {
     }
 
     func commitPaste() {
+        // Guard: only paste if the HUD is actually visible. If the user pressed
+        // Option+E (or Clear History) during a cycling session, clearHistory() hides
+        // the HUD before this callback fires. Without this guard, releasing Option
+        // after an erase would silently paste the last cycled-to clipboard entry.
+        guard hud.isVisible else { return }
         hud.commitPaste()
     }
 
@@ -169,6 +178,8 @@ final class AppController: ObservableObject {
             trustPollTimer?.invalidate()
             trustPollTimer = nil
         } else if !trusted {
+            hotkey.resetCyclingSession()
+            hud.hide()
             hotkey.disable()
             startTrustPolling()
         }
@@ -179,6 +190,7 @@ final class AppController: ObservableObject {
     /// Called when CGEventTap signals it has been disabled mid-session.
     /// This typically means the user revoked Accessibility in System Settings.
     private func handleTapDisabled() {
+        hotkey.resetCyclingSession()
         hud.hide()
         refreshAccessibilityStatus()
         print("[AppController] CGEventTap disabled mid-session; refreshing Accessibility status")
