@@ -173,6 +173,8 @@ final class AppController: ObservableObject {
             trustPollTimer?.invalidate()
             trustPollTimer = nil
         } else if !trusted {
+            hotkey.resetCyclingSession()
+            hud.hide()
             hotkey.disable()
             startTrustPolling()
         }
@@ -183,6 +185,7 @@ final class AppController: ObservableObject {
     /// Called when CGEventTap signals it has been disabled mid-session.
     /// This typically means the user revoked Accessibility in System Settings.
     private func handleTapDisabled() {
+        hotkey.resetCyclingSession()
         hud.hide()
         refreshAccessibilityStatus()
         print("[AppController] CGEventTap disabled mid-session; refreshing Accessibility status")
