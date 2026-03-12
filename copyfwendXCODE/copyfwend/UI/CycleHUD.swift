@@ -43,7 +43,7 @@ final class CycleHUD: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         setupContent()
@@ -207,7 +207,7 @@ final class CycleHUD: NSPanel {
         badgeWindow.level = .floating
         badgeWindow.isOpaque = false
         badgeWindow.backgroundColor = .clear
-        badgeWindow.hasShadow = true
+        badgeWindow.hasShadow = false
         badgeWindow.isReleasedWhenClosed = false
         badgeWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
