@@ -31,8 +31,8 @@ final class CycleHUD: NSPanel {
     private static let panelAlpha:       CGFloat      = 0.92
     private static let fadeIn:           TimeInterval = 0.10
     private static let fadeOut:          TimeInterval = 0.08
-    /// Cursor offset so the HUD appears above and to the right of the pointer.
-    private static let cursorOffset:     NSPoint      = NSPoint(x: 16, y: 20)
+    /// Cursor offset so the HUD appears below and to the right of the pointer.
+    private static let cursorOffset:     NSPoint      = NSPoint(x: 16, y: -28)
 
     // MARK: - Init
 
@@ -55,7 +55,7 @@ final class CycleHUD: NSPanel {
 
     private func setupContent() {
         let effect = NSVisualEffectView()
-        effect.material = .hudWindow
+        effect.material = .menu
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
@@ -64,7 +64,7 @@ final class CycleHUD: NSPanel {
         effect.layer?.borderWidth = 0.5
         effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
-        label.font = .monospacedSystemFont(ofSize: Self.fontSize, weight: .regular)
+        label.font = .systemFont(ofSize: Self.fontSize, weight: .regular)
         label.textColor = .white
         label.lineBreakMode = .byWordWrapping
         label.maximumNumberOfLines = Self.maxLines
@@ -72,7 +72,7 @@ final class CycleHUD: NSPanel {
         label.translatesAutoresizingMaskIntoConstraints = false
 
         badgeLabel.font = .monospacedSystemFont(ofSize: Self.badgeFontSize, weight: .medium)
-        badgeLabel.textColor = NSColor.white.withAlphaComponent(0.70)
+        badgeLabel.textColor = NSColor.controlAccentColor
         badgeLabel.alignment = .left
         badgeLabel.isSelectable = false
         badgeLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -193,6 +193,7 @@ final class CycleHUD: NSPanel {
         )
 
         // Clamp to the screen that contains the cursor so the panel is always fully visible
+        // Negative Y offset places the HUD below the cursor; subtract panel height to anchor top edge.
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
         if let screen {
             let frame = screen.visibleFrame
