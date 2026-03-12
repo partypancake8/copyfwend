@@ -27,3 +27,6 @@ SourcePackages/
 # CocoaPods (not used; defensive)
 Pods/
 Podfile.lock
+
+# Exported app builds
+App/
