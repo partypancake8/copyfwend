@@ -12,6 +12,10 @@ import Foundation
 /// mental model. Subsequent presses step through history. A new `append` resets this state.
 final class ClipboardRing {
 
+    /// Maximum number of entries stored. When this limit is reached, the ring clears
+    /// automatically and the next append starts a fresh history (entry 11 → becomes entry 1).
+    private static let capacity = 10
+
     private var entries: [String] = []
     private var cursor: Int = 0
     /// False after every append; set to true on the first cycle press.
@@ -25,7 +29,13 @@ final class ClipboardRing {
     var currentIndex: Int? { entries.isEmpty ? nil : cursor }
 
     /// Appends a new entry, resets the cursor to the newest position, and resets cycling state.
+    /// If the ring is at capacity, all existing entries are cleared first so the new entry
+    /// becomes entry 1 (the ring auto-resets every `capacity` entries).
     func append(_ text: String) {
+        if entries.count >= Self.capacity {
+            entries.removeAll()
+            cursor = 0
+        }
         entries.append(text)
         cursor = entries.count - 1
         cyclingActive = false

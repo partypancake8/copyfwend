@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import Accessibility
 
 /// Floating non-activating panel displayed near the cursor while the user cycles clipboard history.
 ///
@@ -185,16 +186,147 @@ final class CycleHUD: NSPanel {
         setContentSize(NSSize(width: panelWidth, height: panelHeight))
     }
 
-    private func repositionNearCursor() {
-        let mouse = NSEvent.mouseLocation
-        var origin = NSPoint(
-            x: mouse.x + Self.cursorOffset.x,
-            y: mouse.y + Self.cursorOffset.y
-        )
+    // MARK: - Caret detection (3-level fallback chain)
+    //
+    // Level 1 — kAXBoundsForRangeParameterizedAttribute on the focused element.
+    //           Pixel-perfect. Works in all native Cocoa apps (Xcode, TextEdit, Pages…).
+    // Level 2 — Same query on the first text-editing child of the focused element.
+    //           Catches apps whose focused element is a container, not the text view itself.
+    // Level 3 — Focused element frame (bottom-left of the element's visible rect).
+    //           Works for Electron / web apps that expose position+size but not text bounds.
+    // Fallback — nil → repositionNearCursor() uses the mouse cursor offset.
 
-        // Clamp to the screen that contains the cursor so the panel is always fully visible
-        // Negative Y offset places the HUD below the cursor; subtract panel height to anchor top edge.
-        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
+    private func caretScreenPoint() -> NSPoint? {
+        let sysWide = AXUIElementCreateSystemWide()
+        var focusedRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(sysWide,
+                                            kAXFocusedUIElementAttribute as CFString,
+                                            &focusedRef) == .success,
+              let focusedRef else { return nil }
+        let focused = focusedRef as! AXUIElement
+
+        if let pt = boundsPoint(for: focused)                    { return pt }  // L1
+        if let child = firstTextDescendant(of: focused),
+           let pt = boundsPoint(for: child)                      { return pt }  // L2
+        return elementFramePoint(focused)                                        // L3
+    }
+
+    /// Queries kAXBoundsForRangeParameterizedAttribute for the focused insertion point.
+    /// Uses proper AXValueGetType checks as recommended by Apple (avoids bad-cast crashes).
+    /// Falls back to a 1-char range when the selection is zero-length and the app needs
+    /// a non-empty range to return meaningful bounds (common in some non-Cocoa apps).
+    private func boundsPoint(for element: AXUIElement) -> NSPoint? {
+        var rangeRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element,
+                                            kAXSelectedTextRangeAttribute as CFString,
+                                            &rangeRef) == .success,
+              let rangeRef else { return nil }
+        let rangeValue = rangeRef as! AXValue
+        guard AXValueGetType(rangeValue) == .cfRange else { return nil }
+
+        var cfRange = CFRange()
+        guard AXValueGetValue(rangeValue, .cfRange, &cfRange) else { return nil }
+
+        // Try the selection/insertion range directly.
+        if let pt = resolveRect(rangeValue, on: element) { return pt }
+
+        // For a bare cursor (length == 0), some apps only return bounds for non-empty
+        // ranges. Synthesise a 1-char range at the insertion index and try again.
+        if cfRange.length == 0 {
+            var oneChar = CFRange(location: max(0, cfRange.location), length: 1)
+            if let oneCharValue = AXValueCreate(.cfRange, &oneChar),
+               let pt = resolveRect(oneCharValue, on: element) { return pt }
+        }
+        return nil
+    }
+
+    /// Calls kAXBoundsForRangeParameterizedAttribute and converts the result to AppKit coords.
+    private func resolveRect(_ rangeValue: AXValue, on element: AXUIElement) -> NSPoint? {
+        var boundsRef: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element,
+                                                         kAXBoundsForRangeParameterizedAttribute as CFString,
+                                                         rangeValue,
+                                                         &boundsRef) == .success,
+              let boundsRef else { return nil }
+        let boundsValue = boundsRef as! AXValue
+        guard AXValueGetType(boundsValue) == .cgRect else { return nil }
+
+        var rect = CGRect.zero
+        // width == 0 is valid for a bare insertion point; require height > 0.
+        guard AXValueGetValue(boundsValue, .cgRect, &rect), rect.height > 0 else { return nil }
+
+        // AX rects are in CG coords (Y↓, origin = top-left of primary screen).
+        // Convert to AppKit (Y↑, origin = bottom-left of primary screen).
+        // rect.maxY (CG) is the BOTTOM pixel of the caret → AppKit Y of caret bottom.
+        guard let ph = NSScreen.screens.first?.frame.height else { return nil }
+        return NSPoint(x: rect.minX, y: ph - rect.maxY)
+    }
+
+    /// Returns the first depth-1 child whose AX role is a text-editing type.
+    private func firstTextDescendant(of element: AXUIElement) -> AXUIElement? {
+        var childrenRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element,
+                                            kAXChildrenAttribute as CFString,
+                                            &childrenRef) == .success,
+              let children = childrenRef as? [AXUIElement] else { return nil }
+        let editingRoles: Set<String> = [
+            kAXTextAreaRole, kAXTextFieldRole, kAXComboBoxRole, kAXScrollAreaRole
+        ]
+        return children.first { child in
+            var roleRef: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(child,
+                                                kAXRoleAttribute as CFString,
+                                                &roleRef) == .success,
+                  let role = roleRef as? String else { return false }
+            return editingRoles.contains(role)
+        }
+    }
+
+    /// Level-3: bottom-left of the focused element frame (AppKit coords).
+    /// Works in Electron / web apps that expose position+size but not text-range bounds.
+    private func elementFramePoint(_ element: AXUIElement) -> NSPoint? {
+        var posRef: CFTypeRef?
+        var sizeRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString,     &sizeRef) == .success,
+              let posRef, let sizeRef else { return nil }
+        let posValue  = posRef  as! AXValue
+        let sizeValue = sizeRef as! AXValue
+        guard AXValueGetType(posValue)  == .cgPoint,
+              AXValueGetType(sizeValue) == .cgSize else { return nil }
+
+        var pos  = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(posValue,  .cgPoint, &pos),
+              AXValueGetValue(sizeValue, .cgSize,  &size),
+              size.height > 4 else { return nil }
+
+        guard let ph = NSScreen.screens.first?.frame.height else { return nil }
+        // pos.y (CG) is the TOP of the element; pos.y + size.height is the CG bottom.
+        // AppKit Y of the element bottom = ph - (pos.y + size.height).
+        return NSPoint(x: pos.x, y: ph - (pos.y + size.height))
+    }
+
+    private func repositionNearCursor() {
+        let anchor: NSPoint
+        let screenProbe: NSPoint
+
+        if let caret = caretScreenPoint() {
+            // caret is the AppKit bottom-left of the blinking insertion-point rect.
+            // setFrameOrigin places the panel's BOTTOM-left corner, so to position the
+            // panel's TOP just below the caret's bottom we subtract (gap + panelHeight).
+            // resizePanel() has already run so self.frame.size.height is current.
+            anchor = NSPoint(x: caret.x, y: caret.y - 6 - self.frame.size.height)
+            screenProbe = caret
+        } else {
+            let mouse = NSEvent.mouseLocation
+            anchor = NSPoint(x: mouse.x + Self.cursorOffset.x, y: mouse.y + Self.cursorOffset.y)
+            screenProbe = mouse
+        }
+
+        var origin = anchor
+        // Clamp so the panel stays fully within the visible screen area.
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(screenProbe) }) ?? NSScreen.main
         if let screen {
             let frame = screen.visibleFrame
             origin.x = max(frame.minX + 8, min(origin.x, frame.maxX - self.frame.size.width  - 8))
